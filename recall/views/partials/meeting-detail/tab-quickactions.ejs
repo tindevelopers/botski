@@ -88,9 +88,9 @@
           </div>
         </div>
 
-        <!-- Exports -->
+        <!-- Media Downloads -->
         <div class="rounded-lg border border-gray-200 p-4">
-          <h3 class="text-sm font-semibold text-gray-900 mb-3">Exports</h3>
+          <h3 class="text-sm font-semibold text-gray-900 mb-3">Media Downloads</h3>
           <div class="space-y-2">
             <% if (meeting.videoUrl || meeting.artifactId) { %>
               <% 
@@ -102,6 +102,9 @@
                 href="<%= videoDownloadUrl %>"
                 class="w-full inline-flex items-center justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500"
               >
+                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
                 Download Video
               </a>
             <% } %>
@@ -115,8 +118,65 @@
                 href="<%= audioDownloadUrl %>"
                 class="w-full inline-flex items-center justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
               >
+                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                </svg>
                 Download Audio
               </a>
+            <% } %>
+            <% if (!meeting.videoUrl && !meeting.audioUrl) { %>
+              <p class="text-xs text-gray-500">Media downloads will be available once the recording is processed.</p>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Export All Artifacts -->
+        <div class="rounded-lg border border-gray-200 p-4">
+          <h3 class="text-sm font-semibold text-gray-900 mb-3">Export Artifacts</h3>
+          <div class="space-y-2">
+            <% if (meeting.summary || meeting.artifactId) { %>
+              <button
+                type="button"
+                onclick="exportMeetingJSON()"
+                class="w-full inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+              >
+                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                Export All (JSON)
+              </button>
+              <button
+                type="button"
+                onclick="exportMeetingMarkdown()"
+                class="w-full inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-inset ring-indigo-200 hover:bg-indigo-50"
+              >
+                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Export All (Markdown)
+              </button>
+              <button
+                type="button"
+                onclick="copyAllArtifacts()"
+                class="w-full inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+              >
+                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+                Copy All Artifacts
+              </button>
+              <button
+                type="button"
+                onclick="printMeeting()"
+                class="w-full inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+              >
+                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                </svg>
+                Print Meeting
+              </button>
+            <% } else { %>
+              <p class="text-xs text-gray-500">Exports will be available once the meeting is processed.</p>
             <% } %>
             <% if (meeting.summary) { %>
               <button
@@ -124,11 +184,11 @@
                 onclick="copySummaryToClipboard()"
                 class="w-full inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
               >
-                Copy Summary
+                <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+                Copy Summary Only
               </button>
-            <% } %>
-            <% if (!meeting.videoUrl && !meeting.audioUrl && !meeting.summary) { %>
-              <p class="text-xs text-gray-500">Exports will be available once the recording is processed.</p>
             <% } %>
           </div>
         </div>

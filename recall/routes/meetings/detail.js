@@ -1,5 +1,5 @@
 import db from "../../db.js";
-import { isSuperAgentEnabled } from "../../utils/super-agent.js";
+import { isSuperAgentEnabled, isUserPremium } from "../../utils/super-agent.js";
 import { Op } from "sequelize";
 
 // Generic/placeholder titles we should ignore when deriving a display name
@@ -10,7 +10,9 @@ function isGenericMeetingTitle(title) {
     normalized === "meeting" ||
     normalized === "untitled meeting" ||
     normalized === "untitled" ||
-    normalized === "(no title)"
+    normalized === "(no title)" ||
+    // "Meeting on 2/6/2026" - date-based fallback; prefer extracting from rawPayload (meeting_title, etc.)
+    /^meeting on \d/.test(normalized)
   );
 }
 
@@ -219,6 +221,12 @@ export default async (req, res) => {
   const userId = req.authentication.user.id;
   const meetingId = req.params.id;
 
+  // Load full user model for premium/trial check
+  const currentUser = await db.User.findByPk(userId);
+  if (!currentUser) {
+    return res.redirect("/sign-in");
+  }
+
   // FAST INITIAL LOAD: Only fetch minimal metadata, no transcript chunks
   // Artifacts will be lazy-loaded via JavaScript after page renders
   
@@ -256,14 +264,13 @@ export default async (req, res) => {
     if (isOwner) {
       hasAccess = true;
     } else {
-      const user = await db.User.findByPk(userId);
       const shareWhereClause = {
         meetingArtifactId: artifact.id,
         status: "accepted",
         [Op.or]: [{ sharedWithUserId: userId }],
       };
-      if (user?.email) {
-        shareWhereClause[Op.or].push({ sharedWithEmail: user.email.toLowerCase() });
+      if (currentUser?.email) {
+        shareWhereClause[Op.or].push({ sharedWithEmail: currentUser.email.toLowerCase() });
       }
       
       shareInfo = await db.MeetingShare.findOne({
@@ -428,13 +435,21 @@ export default async (req, res) => {
     description = matchingUpcomingEvent.description;
   }
 
-  // Create display title: use extracted title (NOT description)
-  // If extracted title is "Meeting on {date}", remove the date part since we show date separately
-  let displayTitle = extractedTitle || 'Meeting';
-  if (extractedTitle && extractedTitle.startsWith('Meeting on ')) {
-    // Remove "Meeting on {date}" pattern - just use "Meeting" or keep the title as-is if it has other content
-    displayTitle = extractedTitle.replace(/^Meeting on \d{1,2}\/\d{1,2}\/\d{4}$/, 'Meeting');
-  }
+  // Create display title: use extracted title directly
+  // "Meeting on {date}" is now treated as generic by isGenericMeetingTitle, so it won't
+  // reach here from the DB path. If extractMeetingTitle returns it as a last resort,
+  // it's still better than bare "Meeting".
+  let displayTitle = extractedTitle || 'Untitled Meeting';
+
+  // #region agent log
+  (() => {
+    const d = artifact?.rawPayload?.data || {};
+    const ce = d.calendar_event || {};
+    const step6Title = d.meeting_title || d.event_title || ce.title || ce.summary || ce.subject;
+    const isGeneric = artifact?.title ? isGenericMeetingTitle(artifact.title) : null;
+    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'recall/routes/meetings/detail.js:title_extraction',message:'Detail page title extraction',data:{meetingId,artifactId:artifact?.id,artifactTitleDb:artifact?.title,isGenericMeetingTitleForDb:isGeneric,step6Title,payloadTitle:d.title,payloadMeetingTitle:d.meeting_title,extractedTitle,displayTitle,codeVersion:'fix-v3-writethrough'},timestamp:Date.now(),hypothesisId:'H1-H5',runId:'post-fix'})}).catch(()=>{});
+  })();
+  // #endregion
 
   const meeting = {
     id: artifact?.id || summary?.id,
@@ -512,6 +527,7 @@ export default async (req, res) => {
       : null,
     superAgentEnabled: isSuperAgentEnabled(calendarForSuperAgent),
     hasPremiumAccess: isSuperAgentEnabled(calendarForSuperAgent),
+    isPremiumUser: isUserPremium(currentUser),
     
     // LAZY LOADING: Transcript will be fetched via API
     transcript: [], // Empty - will be lazy-loaded

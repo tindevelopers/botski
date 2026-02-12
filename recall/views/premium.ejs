@@ -1,0 +1,323 @@
+<%- include('partials/header') -%>
+<div class="min-h-full bg-gradient-to-br from-slate-50 via-white to-indigo-50">
+  <%- include('partials/navigation', { user: user, currentPage: 'premium' }) -%>
+  <%- include('partials/notice', { notice: notice }) -%>
+
+  <div class="py-10">
+    <header class="mb-8">
+      <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <div class="text-center">
+          <h1 class="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            <% if (isPremium) { %>
+              You're on Premium
+            <% } else { %>
+              Upgrade to Premium
+            <% } %>
+          </h1>
+          <p class="mt-3 text-lg text-gray-600">
+            <% if (isPremium) { %>
+              You have full access to all premium features.
+            <% } else if (isTrial) { %>
+              You're currently on a free trial. Upgrade to keep premium features.
+            <% } else { %>
+              Unlock richer meeting insights powered by AssemblyAI Super Agent.
+            <% } %>
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+
+        <!-- Status Banner -->
+        <% if (isPremium) { %>
+          <div class="mb-8 rounded-xl border border-green-200 bg-green-50 p-6 text-center">
+            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 mb-4">
+              <svg class="h-7 w-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <h2 class="text-lg font-semibold text-green-800">Premium Active</h2>
+            <p class="mt-1 text-sm text-green-700">You have access to all premium features including AssemblyAI Super Agent analysis.</p>
+          </div>
+        <% } else if (isTrial) { %>
+          <div class="mb-8 rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
+            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 mb-4">
+              <svg class="h-7 w-7 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+              </svg>
+            </div>
+            <h2 class="text-lg font-semibold text-amber-800">Free Trial Active</h2>
+            <% if (trialEndDate) { %>
+              <p class="mt-1 text-sm text-amber-700">Your trial ends on <strong><%= trialEndDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) %></strong>. Upgrade now to keep premium features.</p>
+            <% } %>
+          </div>
+        <% } %>
+
+        <!-- Pricing Cards -->
+        <div class="grid gap-6 sm:grid-cols-2">
+
+          <!-- Standard Plan -->
+          <div class="relative rounded-2xl border-2 <%= !isPremium ? 'border-indigo-200 bg-white' : 'border-gray-200 bg-white' %> p-8 shadow-sm">
+            <% if (!isPremium && !isTrial) { %>
+              <span class="absolute -top-3 left-6 inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">Current Plan</span>
+            <% } %>
+            <div class="mb-6">
+              <h3 class="text-xl font-bold text-gray-900">Standard</h3>
+              <div class="mt-3 flex items-baseline">
+                <span class="text-4xl font-bold tracking-tight text-gray-900">Free</span>
+              </div>
+              <p class="mt-2 text-sm text-gray-500">Basic meeting transcription and summaries.</p>
+            </div>
+            <ul class="space-y-3 text-sm text-gray-600">
+              <li class="flex items-start gap-2">
+                <svg class="h-5 w-5 flex-shrink-0 text-green-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+                Meeting transcription
+              </li>
+              <li class="flex items-start gap-2">
+                <svg class="h-5 w-5 flex-shrink-0 text-green-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+                Basic summary &amp; topics
+              </li>
+              <li class="flex items-start gap-2">
+                <svg class="h-5 w-5 flex-shrink-0 text-green-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+                Action items &amp; follow-ups
+              </li>
+              <li class="flex items-start gap-2">
+                <svg class="h-5 w-5 flex-shrink-0 text-green-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+                Meeting recording &amp; playback
+              </li>
+              <li class="flex items-start gap-2">
+                <svg class="h-5 w-5 flex-shrink-0 text-gray-300 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+                <span class="text-gray-400">AssemblyAI Super Agent</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <svg class="h-5 w-5 flex-shrink-0 text-gray-300 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+                <span class="text-gray-400">Timestamped chapters &amp; highlights</span>
+              </li>
+            </ul>
+            <div class="mt-8">
+              <% if (isPremium) { %>
+                <button
+                  type="button"
+                  id="btn-downgrade"
+                  onclick="handleDowngrade()"
+                  class="w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+                >
+                  Downgrade to Standard
+                </button>
+              <% } else { %>
+                <div class="w-full rounded-lg border-2 border-gray-200 bg-gray-50 px-4 py-3 text-center text-sm font-semibold text-gray-400">
+                  Current Plan
+                </div>
+              <% } %>
+            </div>
+          </div>
+
+          <!-- Premium Plan -->
+          <div class="relative rounded-2xl border-2 <%= isPremium ? 'border-amber-400 bg-amber-50/30 ring-2 ring-amber-200' : 'border-amber-300 bg-white ring-1 ring-amber-100' %> p-8 shadow-md">
+            <% if (isPremium) { %>
+              <span class="absolute -top-3 left-6 inline-flex items-center rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">Current Plan</span>
+            <% } else { %>
+              <span class="absolute -top-3 left-6 inline-flex items-center rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">Recommended</span>
+            <% } %>
+            <div class="mb-6">
+              <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                Premium
+                <svg class="h-5 w-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                </svg>
+              </h3>
+              <div class="mt-3 flex items-baseline gap-1">
+                <span class="text-4xl font-bold tracking-tight text-gray-900">$0</span>
+                <span class="text-sm text-gray-500">/month</span>
+              </div>
+              <p class="mt-1 text-xs text-amber-600 font-medium">Billing stubbed — free during development</p>
+              <p class="mt-2 text-sm text-gray-500">Advanced AI-powered meeting intelligence.</p>
+            </div>
+            <ul class="space-y-3 text-sm text-gray-600">
+              <li class="flex items-start gap-2">
+                <svg class="h-5 w-5 flex-shrink-0 text-green-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+                Everything in Standard
+              </li>
+              <li class="flex items-start gap-2">
+                <svg class="h-5 w-5 flex-shrink-0 text-amber-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                </svg>
+                <strong>AssemblyAI Super Agent analysis</strong>
+              </li>
+              <li class="flex items-start gap-2">
+                <svg class="h-5 w-5 flex-shrink-0 text-amber-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                </svg>
+                <strong>Timestamped chapters</strong>
+              </li>
+              <li class="flex items-start gap-2">
+                <svg class="h-5 w-5 flex-shrink-0 text-amber-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                </svg>
+                <strong>Rich highlights with speakers</strong>
+              </li>
+              <li class="flex items-start gap-2">
+                <svg class="h-5 w-5 flex-shrink-0 text-amber-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                </svg>
+                <strong>Timestamped action items</strong>
+              </li>
+            </ul>
+            <div class="mt-8">
+              <% if (isPremium) { %>
+                <div class="w-full rounded-lg border-2 border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-700">
+                  Current Plan
+                </div>
+              <% } else { %>
+                <button
+                  type="button"
+                  id="btn-upgrade"
+                  onclick="handleUpgrade()"
+                  class="w-full rounded-lg bg-amber-500 px-4 py-3 text-sm font-semibold text-white shadow-md hover:bg-amber-400 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
+                >
+                  Upgrade to Premium
+                </button>
+              <% } %>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Billing Stub Notice -->
+        <div class="mt-8 rounded-xl border border-blue-200 bg-blue-50 p-4 text-center">
+          <div class="flex items-center justify-center gap-2 text-sm text-blue-700">
+            <svg class="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span>Billing is currently stubbed. Upgrading and downgrading is instant with no charges.</span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirm-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+    <div class="fixed inset-0 bg-gray-500/75 transition-opacity" onclick="closeModal()"></div>
+    <div class="relative transform overflow-hidden rounded-xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md">
+      <div class="bg-white px-6 py-6">
+        <div class="text-center">
+          <div id="modal-icon" class="mx-auto flex h-14 w-14 items-center justify-center rounded-full mb-4"></div>
+          <h3 class="text-lg font-semibold text-gray-900" id="modal-title">Confirm</h3>
+          <p class="mt-2 text-sm text-gray-500" id="modal-description"></p>
+        </div>
+      </div>
+      <div class="bg-gray-50 px-6 py-4 flex gap-3 justify-end">
+        <button type="button" onclick="closeModal()" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+          Cancel
+        </button>
+        <button type="button" id="modal-confirm-btn" class="rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors">
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function showModal({ title, description, iconHtml, confirmText, confirmClass, onConfirm }) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-description').textContent = description;
+    document.getElementById('modal-icon').innerHTML = iconHtml;
+    const confirmBtn = document.getElementById('modal-confirm-btn');
+    confirmBtn.textContent = confirmText;
+    confirmBtn.className = 'rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors ' + confirmClass;
+    confirmBtn.onclick = () => { closeModal(); onConfirm(); };
+    document.getElementById('confirm-modal').classList.remove('hidden');
+  }
+
+  function closeModal() {
+    document.getElementById('confirm-modal').classList.add('hidden');
+  }
+
+  function handleUpgrade() {
+    showModal({
+      title: 'Upgrade to Premium?',
+      description: 'You will get instant access to all premium features including AssemblyAI Super Agent analysis, timestamped chapters, and rich highlights.',
+      iconHtml: '<svg class="h-7 w-7 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>',
+      confirmText: 'Upgrade Now',
+      confirmClass: 'bg-amber-500 hover:bg-amber-400 focus:ring-2 focus:ring-amber-400 focus:ring-offset-2',
+      onConfirm: doUpgrade,
+    });
+    document.getElementById('modal-icon').className = 'mx-auto flex h-14 w-14 items-center justify-center rounded-full mb-4 bg-amber-100';
+  }
+
+  function handleDowngrade() {
+    showModal({
+      title: 'Downgrade to Standard?',
+      description: 'You will lose access to premium features like AssemblyAI Super Agent, timestamped chapters, and rich highlights. You can upgrade again at any time.',
+      iconHtml: '<svg class="h-7 w-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>',
+      confirmText: 'Downgrade',
+      confirmClass: 'bg-red-600 hover:bg-red-500 focus:ring-2 focus:ring-red-500 focus:ring-offset-2',
+      onConfirm: doDowngrade,
+    });
+    document.getElementById('modal-icon').className = 'mx-auto flex h-14 w-14 items-center justify-center rounded-full mb-4 bg-red-100';
+  }
+
+  async function doUpgrade() {
+    const btn = document.getElementById('btn-upgrade');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Upgrading...';
+    }
+    try {
+      const res = await fetch('/api/premium/upgrade', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert(data.error || 'Failed to upgrade');
+        if (btn) { btn.disabled = false; btn.textContent = 'Upgrade to Premium'; }
+      }
+    } catch (err) {
+      alert('Something went wrong. Please try again.');
+      if (btn) { btn.disabled = false; btn.textContent = 'Upgrade to Premium'; }
+    }
+  }
+
+  async function doDowngrade() {
+    const btn = document.getElementById('btn-downgrade');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Downgrading...';
+    }
+    try {
+      const res = await fetch('/api/premium/downgrade', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert(data.error || 'Failed to downgrade');
+        if (btn) { btn.disabled = false; btn.textContent = 'Downgrade to Standard'; }
+      }
+    } catch (err) {
+      alert('Something went wrong. Please try again.');
+      if (btn) { btn.disabled = false; btn.textContent = 'Downgrade to Standard'; }
+    }
+  }
+</script>
+
+<%- include('partials/footer') -%>

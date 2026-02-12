@@ -144,7 +144,9 @@ function isGenericMeetingTitle(title) {
     normalized === "meeting" ||
     normalized === "untitled meeting" ||
     normalized === "untitled" ||
-    normalized === "(no title)"
+    normalized === "(no title)" ||
+    // "Meeting on 2/6/2026" - date-based fallback; prefer extracting from rawPayload (meeting_title, etc.)
+    /^meeting on \d/.test(normalized)
   );
 }
 
@@ -2415,6 +2417,13 @@ export default async (req, res) => {
     // Use upcoming event title if available and better, otherwise use extracted title
     let finalTitle = extractMeetingTitle(artifact, calendarEvent);
     
+    // #region agent log
+    if (artifact.id === "5aadb9f6-0176-48ee-a0e7-eb4df2221cf6") {
+      const d = artifact?.rawPayload?.data || {};
+      const ce = d.calendar_event || {};
+      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'list.js:tech_overview_title',message:'List title extraction for Tech Overview artifact',data:{artifactId:artifact.id,artifactTitle:artifact.title,meetingTitle:d.meeting_title,eventTitle:d.event_title,calEventTitle:ce?.title,calEventSummary:ce?.summary,finalTitle},timestamp:Date.now(),hypothesisId:'H-list',runId:'post-fix'})}).catch(()=>{});
+    }
+    // #endregion
     // Debug: Log title extraction for troubleshooting
     if (finalTitle && finalTitle.startsWith('Meeting on')) {
       console.log(`[TITLE-DEBUG] Artifact ${artifact.id}: Falling back to date-based title. Available sources:`, {
@@ -2430,6 +2439,14 @@ export default async (req, res) => {
     
     if (matchingUpcomingEvent?.title && !isGenericMeetingTitle(matchingUpcomingEvent.title)) {
       finalTitle = matchingUpcomingEvent.title;
+    }
+    
+    // WRITE-THROUGH: Persist extracted title to DB so detail page and all screens can use it
+    // This makes the DB the central source of truth for meeting titles
+    if (finalTitle && !isGenericMeetingTitle(finalTitle) && isGenericMeetingTitle(artifact.title)) {
+      artifact.update({ title: finalTitle }, { silent: true }).catch((err) => {
+        console.warn(`[MEETINGS] Failed to persist title for artifact ${artifact.id}:`, err?.message || err);
+      });
     }
     
     // Use upcoming event description if available, otherwise use artifact/event description

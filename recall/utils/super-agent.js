@@ -16,3 +16,15 @@ export function isSuperAgentEnabled(calendar = null) {
   const v = (process.env.SUPER_AGENT_ENABLED || "").trim().toLowerCase();
   return ENABLED_VALUES.has(v);
 }
+
+/**
+ * Whether a user has premium access (paid subscription or active trial).
+ * Wraps user.isPremiumOrTrial() for use in routes.
+ *
+ * @param {import('../models/user.js')} user - User model instance.
+ * @returns {boolean}
+ */
+export function isUserPremium(user) {
+  if (!user || typeof user.isPremiumOrTrial !== "function") return false;
+  return user.isPremiumOrTrial();
+}

@@ -13,7 +13,9 @@ function isGenericMeetingTitle(title) {
     normalized === "meeting" ||
     normalized === "untitled meeting" ||
     normalized === "untitled" ||
-    normalized === "(no title)"
+    normalized === "(no title)" ||
+    // "Meeting on 2/6/2026" - date-based fallback; prefer extracting from rawPayload (meeting_title, etc.)
+    /^meeting on \d/.test(normalized)
   );
 }
 
@@ -941,4 +943,293 @@ export async function retrySuperAgentAnalysis(req, res) {
     // #endregion
     return res.status(500).json({ error: "Failed to retry Super Agent analysis" });
   }
+}
+
+/**
+ * Export all meeting artifacts (summary, transcript, etc.)
+ * GET /api/meetings/:meetingId/export?format=json|markdown
+ */
+export async function exportMeeting(req, res) {
+  if (!req.authenticated) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { meetingId } = req.params;
+  const format = (req.query.format || "json").toLowerCase();
+  const userId = req.authentication.user.id;
+  const userEmail = req.authentication.user.email || null;
+
+  try {
+    const artifact = await findAccessibleArtifact({
+      meetingIdOrReadableId: meetingId,
+      userId,
+      userEmail,
+    });
+
+    if (!artifact) {
+      return res.status(404).json({ error: "Meeting not found" });
+    }
+
+    // Load full artifact with calendar event
+    const fullArtifact = await db.MeetingArtifact.findByPk(artifact.id, {
+      include: [
+        { model: db.CalendarEvent, include: [{ model: db.Calendar }] },
+      ],
+    });
+
+    const calendarEvent = fullArtifact?.CalendarEvent || null;
+
+    // Get summary
+    const summary = await db.MeetingSummary.findOne({
+      where: { meetingArtifactId: artifact.id },
+      order: [["createdAt", "DESC"]],
+    });
+
+    // Get transcript chunks
+    const transcriptChunks = await db.MeetingTranscriptChunk.findAll({
+      where: { meetingArtifactId: artifact.id },
+      order: [["sequence", "ASC"]],
+      attributes: ["speaker", "text", "startTimeMs", "endTimeMs", "sequence"],
+    });
+
+    // Build title
+    const title = extractMeetingTitle(fullArtifact, calendarEvent);
+
+    // Build export data
+    const exportData = {
+      title: title,
+      meetingId: artifact.id,
+      readableId: artifact.readableId || null,
+      startTime: calendarEvent?.startTime || fullArtifact?.rawPayload?.data?.start_time || fullArtifact?.createdAt || null,
+      endTime: calendarEvent?.endTime || fullArtifact?.rawPayload?.data?.end_time || null,
+      platform: calendarEvent?.platform || null,
+      status: fullArtifact?.status || "completed",
+      exportedAt: new Date().toISOString(),
+
+      // Summary artifacts
+      summary: summary?.summary || null,
+      source: summary?.source || null,
+      actionItems: summary?.actionItems || [],
+      followUps: summary?.followUps || [],
+      topics: summary?.topics || [],
+      highlights: summary?.highlights || [],
+      detailedNotes: summary?.detailedNotes || [],
+      keyInsights: summary?.keyInsights || [],
+      decisions: summary?.decisions || [],
+      sentiment: summary?.sentiment || null,
+      outcome: summary?.outcome || null,
+      stats: summary?.stats || null,
+
+      // Transcript
+      transcript: transcriptChunks.map((chunk) => ({
+        speaker: chunk.speaker || "Speaker",
+        text: chunk.text,
+        startTimeMs: chunk.startTimeMs,
+        endTimeMs: chunk.endTimeMs,
+      })),
+    };
+
+    if (format === "markdown") {
+      const md = buildMarkdownExport(exportData);
+      const filename = `${(title || "meeting").replace(/[^a-zA-Z0-9-_ ]/g, "").replace(/\s+/g, "-").toLowerCase()}-export.md`;
+      res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return res.send(md);
+    }
+
+    // Default: JSON
+    const filename = `${(title || "meeting").replace(/[^a-zA-Z0-9-_ ]/g, "").replace(/\s+/g, "-").toLowerCase()}-export.json`;
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return res.json(exportData);
+  } catch (error) {
+    console.error(`[API] Error exporting meeting ${meetingId}:`, error);
+    return res.status(500).json({ error: "Failed to export meeting" });
+  }
+}
+
+/**
+ * Build a Markdown document from meeting export data.
+ */
+function buildMarkdownExport(data) {
+  const lines = [];
+
+  lines.push(`# ${data.title || "Meeting Export"}`);
+  lines.push("");
+
+  // Metadata
+  const meta = [];
+  if (data.startTime) meta.push(`**Date:** ${new Date(data.startTime).toLocaleString()}`);
+  if (data.platform) meta.push(`**Platform:** ${data.platform}`);
+  if (data.source) meta.push(`**Source:** ${data.source}`);
+  if (data.sentiment) {
+    const label = typeof data.sentiment === "string" ? data.sentiment : (data.sentiment.label || data.sentiment.sentiment || "");
+    if (label) meta.push(`**Sentiment:** ${label}`);
+  }
+  if (data.outcome) meta.push(`**Outcome:** ${data.outcome}`);
+  if (data.exportedAt) meta.push(`**Exported:** ${new Date(data.exportedAt).toLocaleString()}`);
+  if (meta.length > 0) {
+    lines.push(meta.join("  \n"));
+    lines.push("");
+  }
+
+  // Summary
+  if (data.summary) {
+    lines.push("## Summary");
+    lines.push("");
+    lines.push(data.summary);
+    lines.push("");
+  }
+
+  // Key Insights
+  if (data.keyInsights && data.keyInsights.length > 0) {
+    lines.push("## Key Insights");
+    lines.push("");
+    data.keyInsights.forEach((item) => {
+      const text = typeof item === "object" ? (item.text || item.insight || item.description || JSON.stringify(item)) : item;
+      lines.push(`- ${text}`);
+    });
+    lines.push("");
+  }
+
+  // Decisions
+  if (data.decisions && data.decisions.length > 0) {
+    lines.push("## Decisions");
+    lines.push("");
+    data.decisions.forEach((item) => {
+      const text = typeof item === "object" ? (item.text || item.decision || item.description || JSON.stringify(item)) : item;
+      lines.push(`- ${text}`);
+    });
+    lines.push("");
+  }
+
+  // Topics
+  if (data.topics && data.topics.length > 0) {
+    lines.push("## Topics");
+    lines.push("");
+    data.topics.forEach((topic, idx) => {
+      if (typeof topic === "string") {
+        lines.push(`### ${topic}`);
+      } else {
+        const title = topic.title || topic.name || topic.topic || topic.heading || `Topic ${idx + 1}`;
+        lines.push(`### ${title}`);
+        if (topic.summary) lines.push(`${topic.summary}`);
+        if (topic.details) lines.push(`${topic.details}`);
+        const arrayKeys = ["items", "points", "bullets", "notes"];
+        for (const key of arrayKeys) {
+          if (Array.isArray(topic[key])) {
+            topic[key].forEach((item) => {
+              const text = typeof item === "string" ? item : (item.text || item.summary || item.description || JSON.stringify(item));
+              lines.push(`- ${text}`);
+            });
+          }
+        }
+      }
+      lines.push("");
+    });
+  }
+
+  // Highlights
+  if (data.highlights && data.highlights.length > 0) {
+    lines.push("## Highlights");
+    lines.push("");
+    data.highlights.forEach((item, idx) => {
+      if (typeof item === "object") {
+        const title = item.title || `Highlight ${idx + 1}`;
+        const text = item.summary || item.text || "";
+        lines.push(`**${title}**`);
+        if (text) lines.push(text);
+        if (item.speaker) lines.push(`_Speaker: ${item.speaker}_`);
+      } else {
+        lines.push(`- ${item}`);
+      }
+      lines.push("");
+    });
+  }
+
+  // Detailed Notes
+  if (data.detailedNotes && data.detailedNotes.length > 0) {
+    lines.push("## Detailed Notes");
+    lines.push("");
+    data.detailedNotes.forEach((item) => {
+      if (typeof item === "object") {
+        const speaker = item.speaker ? `**${item.speaker}:** ` : "";
+        const text = item.paraphrase || item.summary || item.text || "";
+        lines.push(`- ${speaker}${text}`);
+        if (item.quote) lines.push(`  > "${item.quote}"`);
+      } else {
+        lines.push(`- ${item}`);
+      }
+    });
+    lines.push("");
+  }
+
+  // Action Items
+  if (data.actionItems && data.actionItems.length > 0) {
+    lines.push("## Action Items");
+    lines.push("");
+    data.actionItems.forEach((item) => {
+      if (typeof item === "object") {
+        const text = item.text || item.action || item.task || item.description || JSON.stringify(item);
+        const assignee = item.assignee ? ` (${item.assignee})` : "";
+        lines.push(`- [ ] ${text}${assignee}`);
+      } else {
+        lines.push(`- [ ] ${item}`);
+      }
+    });
+    lines.push("");
+  }
+
+  // Follow-ups
+  if (data.followUps && data.followUps.length > 0) {
+    lines.push("## Follow-ups");
+    lines.push("");
+    data.followUps.forEach((item) => {
+      const text = typeof item === "object" ? (item.text || item.followUp || item.description || item.task || JSON.stringify(item)) : item;
+      lines.push(`- ${text}`);
+    });
+    lines.push("");
+  }
+
+  // Stats
+  if (data.stats) {
+    lines.push("## Stats");
+    lines.push("");
+    if (data.stats.durationSeconds) {
+      const totalMins = Math.round(data.stats.durationSeconds / 60);
+      lines.push(`**Duration:** ${totalMins} minutes`);
+    }
+    if (data.stats.speakers && data.stats.speakers.length > 0) {
+      lines.push("");
+      lines.push("| Speaker | Talk Time | % |");
+      lines.push("|---------|-----------|---|");
+      data.stats.speakers.forEach((s) => {
+        const secs = Math.round(s.talkTimeSeconds || 0);
+        const mins = Math.floor(secs / 60);
+        const rem = secs % 60;
+        const time = mins > 0 ? `${mins}m ${rem}s` : `${secs}s`;
+        const pct = s.talkTimePercent != null ? `${s.talkTimePercent.toFixed(1)}%` : "-";
+        lines.push(`| ${s.name || "Speaker"} | ${time} | ${pct} |`);
+      });
+    }
+    lines.push("");
+  }
+
+  // Transcript
+  if (data.transcript && data.transcript.length > 0) {
+    lines.push("## Transcript");
+    lines.push("");
+    let currentSpeaker = null;
+    data.transcript.forEach((chunk) => {
+      if (chunk.speaker !== currentSpeaker) {
+        currentSpeaker = chunk.speaker;
+        lines.push("");
+        lines.push(`**${chunk.speaker || "Speaker"}:**`);
+      }
+      lines.push(chunk.text || "");
+    });
+    lines.push("");
+  }
+
+  return lines.join("\n");
 }

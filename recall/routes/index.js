@@ -53,6 +53,7 @@ import {
   triggerSuperAgentAnalysis,
   getSuperAgentAnalysis,
   retrySuperAgentAnalysis,
+  exportMeeting,
 } from "./api/meeting-details.js";
 import refreshRecording from "./api/refresh-recording.js";
 import getRecording from "./api/get-recording.js";
@@ -63,6 +64,8 @@ import profileUpdate from "./profile/update.js";
 import apiWebhooks from "./api/webhooks.js";
 import meetingSharesRouter from "./api/meeting-shares.js";
 import recordingProxyRouter from "./api/recording-proxy.js";
+import { startTrial as apiPremiumStartTrial, upgrade as apiPremiumUpgrade, downgrade as apiPremiumDowngrade } from "./api/premium.js";
+import premiumGet from "./premium/get.js";
 
 const fallbackRoute = (featureName) => (req, res) =>
   res.status(503).json({ error: `${featureName} is temporarily unavailable` });
@@ -171,6 +174,7 @@ router.post("/api/meetings/enrich", triggerEnrichment);
 router.post("/api/meetings/:meetingId/super-agent/analyze", triggerSuperAgentAnalysis);
 router.get("/api/meetings/:meetingId/super-agent", getSuperAgentAnalysis);
 router.post("/api/meetings/:meetingId/super-agent/retry", retrySuperAgentAnalysis);
+router.get("/api/meetings/:meetingId/export", exportMeeting);
 router.get("/api/meetings/:meetingId/recording", getRecording);
 router.post("/api/meetings/:meetingId/refresh-recording", refreshRecording);
 router.post("/api/meetings/:meetingId/publish", publishMeeting);
@@ -178,6 +182,14 @@ router.get("/api/notion/destinations", apiNotionDestinations);
 router.post("/api/meetings/:meetingId/publish/notion", publishToNotionDestination);
 
 router.get("/api/webhooks", apiWebhooks);
+
+// Premium page
+router.get("/premium", premiumGet);
+
+// Premium API
+router.post("/api/premium/start-trial", apiPremiumStartTrial);
+router.post("/api/premium/upgrade", apiPremiumUpgrade);
+router.post("/api/premium/downgrade", apiPremiumDowngrade);
 
 // Meeting sharing API
 router.use("/api", meetingSharesRouter);

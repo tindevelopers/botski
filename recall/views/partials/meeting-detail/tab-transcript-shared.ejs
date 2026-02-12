@@ -1,0 +1,113 @@
+<div id="content-transcript" class="tab-content hidden w-full" role="tabpanel" aria-labelledby="tab-transcript" data-lazy-load="true" data-loaded="false">
+  <!-- Loading State -->
+  <div id="transcript-loading" class="<%= meeting.lazyLoadTranscript ? '' : 'hidden' %>">
+    <div class="flex items-center justify-center py-8">
+      <div class="text-center">
+        <svg class="animate-spin h-10 w-10 text-indigo-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <h3 class="text-sm font-semibold text-gray-900">Loading transcript...</h3>
+        <p class="mt-1 text-sm text-gray-500">
+          <% if (meeting.transcriptChunkCount) { %>
+            Fetching <%= meeting.transcriptChunkCount.toLocaleString() %> transcript segments
+          <% } else { %>
+            Please wait while we load the transcript
+          <% } %>
+        </p>
+      </div>
+    </div>
+    <!-- Skeleton placeholders -->
+    <div class="space-y-4 animate-pulse px-4 sm:px-6 lg:px-8">
+      <% for (let i = 0; i < 5; i++) { %>
+        <div class="pt-3 border-t border-gray-100">
+          <div class="flex items-center mb-1">
+            <div class="h-5 w-24 bg-gray-200 rounded-full"></div>
+            <div class="ml-2 h-4 w-12 bg-gray-100 rounded"></div>
+          </div>
+          <div class="space-y-2">
+            <div class="h-4 bg-gray-200 rounded w-full"></div>
+            <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+            <div class="h-4 bg-gray-200 rounded w-4/6"></div>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Transcript Content (populated by JavaScript or server) -->
+  <div id="transcript-content" class="w-full <%= meeting.lazyLoadTranscript ? 'hidden' : '' %>">
+    <% if (!meeting.lazyLoadTranscript) { %>
+      <% if (meeting.transcript && meeting.transcript.length > 0) { %>
+        <%
+          const speakerPalette = ['indigo','blue','purple','emerald','amber','rose'];
+          const speakerClass = (name) => {
+            const str = name || 'Speaker';
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) { hash = (hash << 5) - hash + str.charCodeAt(i); hash |= 0; }
+            const idx = Math.abs(hash) % speakerPalette.length;
+            return speakerPalette[idx];
+          };
+        %>
+        <div class="max-h-[calc(100vh-300px)] min-h-[400px] overflow-y-auto w-full">
+          <div class="w-full space-y-4 pb-4 px-4 sm:px-6 lg:px-8">
+            <%
+              let currentSpeaker = null;
+              meeting.transcript.forEach(function(chunk) {
+                const showSpeaker = chunk.speaker !== currentSpeaker;
+                currentSpeaker = chunk.speaker;
+            %>
+              <div class="w-full <%= showSpeaker ? 'pt-3 border-t border-gray-100' : '' %>">
+                <% if (showSpeaker) { %>
+                  <div class="flex items-center mb-1">
+                    <% const color = speakerClass(chunk.speaker); %>
+                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-<%= color %>-100 text-<%= color %>-800">
+                      <svg class="mr-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                      </svg>
+                      <%= chunk.speaker %>
+                    </span>
+                    <% if (chunk.startTimeMs) { %>
+                      <span class="ml-2 text-xs text-gray-400">
+                        <%= Math.floor(chunk.startTimeMs / 60000) %>:<%= String(Math.floor((chunk.startTimeMs % 60000) / 1000)).padStart(2, '0') %>
+                      </span>
+                    <% } %>
+                  </div>
+                <% } %>
+                <p class="w-full text-sm text-gray-700 text-left">
+                  <%= chunk.text %>
+                </p>
+              </div>
+            <% }); %>
+            <div class="pt-4 border-t border-gray-100 text-center">
+              <p class="text-xs text-gray-400"><%= meeting.transcript.length.toLocaleString() %> transcript segments loaded</p>
+            </div>
+          </div>
+        </div>
+      <% } else { %>
+        <div class="text-center py-8">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          <h3 class="mt-2 text-sm font-semibold text-gray-900">No transcript available</h3>
+          <p class="mt-1 text-sm text-gray-500">The meeting transcript will appear here once it's processed.</p>
+        </div>
+      <% } %>
+    <% } %>
+  </div>
+
+  <!-- Error State -->
+  <div id="transcript-error" class="hidden text-center py-8">
+    <svg class="mx-auto h-12 w-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+    </svg>
+    <h3 class="mt-2 text-sm font-semibold text-gray-900">Failed to load transcript</h3>
+    <p class="mt-1 text-sm text-gray-500" id="transcript-error-message">An error occurred while loading the transcript.</p>
+    <button onclick="loadTranscript()" class="mt-4 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+      <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+      </svg>
+      Retry
+    </button>
+  </div>
+</div>
