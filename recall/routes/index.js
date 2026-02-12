@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import root from "./root.js";
+import health from "./health.js";
 import catchAll from "./catch-all.js";
 import signInGet from "./sign-in/get.js";
 import signInPost from "./sign-in/post.js";
@@ -98,6 +99,9 @@ const publishingTargetsGet = await loadRouteModule(
   "Publishing targets page"
 );
 const apiSlackChannels = slackChannels;
+
+// Health check endpoint (no auth required, for Railway serverless)
+router.get("/health", health);
 
 router.get("/", root);
 router.get("/publishing-targets", publishingTargetsGet);

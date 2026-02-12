@@ -1008,6 +1008,10 @@
     }
   }
 
+  // Track how long analysis has been processing
+  let processingStartTime = null;
+  const MAX_PROCESSING_TIME_MS = 120000; // 2 minutes
+  
   function scheduleSuperAgentPoll() {
     if (superAgentPollTimer) {
       clearTimeout(superAgentPollTimer);
@@ -1017,7 +1021,23 @@
       if (analysis) {
         renderSuperAgentAnalysis(analysis);
         if (analysis.status === 'processing' || analysis.status === 'queued') {
-          scheduleSuperAgentPoll();
+          // Track how long we've been processing
+          if (!processingStartTime) {
+            processingStartTime = Date.now();
+          }
+          
+          // Auto-retry if stuck in processing for too long
+          const processingDuration = Date.now() - processingStartTime;
+          if (analysis.status === 'processing' && processingDuration > MAX_PROCESSING_TIME_MS) {
+            console.log('[Super Agent] Analysis stuck in processing for', Math.round(processingDuration / 1000), 'seconds - auto-retrying');
+            processingStartTime = null; // Reset timer
+            await retrySuperAgentAnalysis(true); // true = isAutoRetry
+          } else {
+            scheduleSuperAgentPoll();
+          }
+        } else {
+          // Reset timer when not processing
+          processingStartTime = null;
         }
       }
     }, 4000);
@@ -1061,9 +1081,9 @@
     }
   }
 
-  async function retrySuperAgentAnalysis() {
+  async function retrySuperAgentAnalysis(isAutoRetry = false) {
     if (!meetingId) {
-      showNotification('No meeting ID available', 'error');
+      if (!isAutoRetry) showNotification('No meeting ID available', 'error');
       return;
     }
 
@@ -1086,10 +1106,15 @@
         throw new Error(result.error || 'Failed to retry Super Agent analysis');
       }
 
-      showNotification('Retry queued - analysis will complete shortly', 'success');
+      if (!isAutoRetry) {
+        showNotification('Retry queued - analysis will complete shortly', 'success');
+      }
       scheduleSuperAgentPoll();
     } catch (error) {
-      showNotification(error.message || 'Failed to retry Super Agent', 'error');
+      if (!isAutoRetry) {
+        showNotification(error.message || 'Failed to retry Super Agent', 'error');
+      }
+      console.error('[Super Agent] Retry failed:', error);
     } finally {
       if (retryBtn) {
         retryBtn.disabled = false;

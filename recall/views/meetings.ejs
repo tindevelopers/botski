@@ -1409,4 +1409,16 @@ document.addEventListener('keydown', function(e) {
   </div>
 </div>
 
+<% if (syncInProgress) { %>
+<script>
+  // Auto-refresh when sync is in progress
+  // Background sync typically completes in 10-30 seconds
+  // We'll check after 15 seconds to see if sync is done
+  setTimeout(function() {
+    console.log('[MEETINGS] Sync was in progress, auto-refreshing to check status...');
+    window.location.reload();
+  }, 15000); // 15 seconds
+</script>
+<% } %>
+
 <%- include('partials/footer') -%>
