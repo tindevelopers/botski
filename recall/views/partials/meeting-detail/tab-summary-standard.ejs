@@ -63,7 +63,7 @@
   <div class="flex flex-wrap items-center gap-2">
     <% if (meeting.summarySource) { %>
       <span class="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200">
-        Source: <%= meeting.summarySource === 'recall_webhook' ? 'Recall' : meeting.summarySource === 'openai' ? 'OpenAI' : meeting.summarySource === 'anthropic' ? 'Anthropic' : meeting.summarySource === 'assemblyai' ? 'AssemblyAI' : meeting.summarySource %>
+        Source: <%= meeting.summarySource === 'recall_webhook' ? 'Recall' : meeting.summarySource === 'openai' ? 'OpenAI' : meeting.summarySource === 'anthropic' ? 'Anthropic' : meeting.summarySource === 'assemblyai' ? 'Super Agent' : meeting.summarySource %>
       </span>
     <% } else { %>
       <span class="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200">

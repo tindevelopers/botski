@@ -188,7 +188,7 @@
             />
           </div>
           <div class="ml-4">
-            <span class="text-sm font-semibold text-gray-900">Super Agent (AssemblyAI)</span>
+            <span class="text-sm font-semibold text-gray-900">Super Agent</span>
             <p class="text-sm text-gray-500 mt-0.5">Enable premium meeting analysis: chapters, action items, decisions, sentiment, and more</p>
           </div>
         </label>
@@ -222,7 +222,7 @@
           >
             <option value="recall" <%= (calendar.aiProvider || 'recall') === 'recall' ? 'selected' : '' %>>Recall.ai (Built-in)</option>
             <option value="openai" <%= calendar.aiProvider === 'openai' ? 'selected' : '' %>>OpenAI</option>
-            <option value="assemblyai" <%= calendar.aiProvider === 'assemblyai' ? 'selected' : '' %>>AssemblyAI</option>
+            <option value="assemblyai" <%= calendar.aiProvider === 'assemblyai' ? 'selected' : '' %>>Super Agent</option>
             <option value="anthropic" <%= calendar.aiProvider === 'anthropic' ? 'selected' : '' %>>Anthropic (Claude)</option>
           </select>
           <p class="mt-1 text-xs text-gray-500">Choose which AI service to use for meeting summaries</p>

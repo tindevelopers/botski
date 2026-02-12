@@ -103,18 +103,18 @@
       </div>
       <div class="space-y-3">
         <% groups[groupName].forEach(function(action) { %>
-          <div class="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-            <div class="flex items-start gap-3">
-              <p class="text-sm text-gray-900 flex-1" style="word-wrap: break-word; overflow-wrap: break-word;"><%= action.text %></p>
-              <% if (action.due) { %>
-                <span class="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 ring-1 ring-red-200 whitespace-nowrap flex-shrink-0">
+          <div class="rounded-lg border border-gray-200 bg-white p-3 shadow-sm relative">
+            <% if (action.due) { %>
+              <div class="absolute top-2 right-2">
+                <span class="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 ring-1 ring-red-200 whitespace-nowrap">
                   <svg class="mr-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                   </svg>
                   <%= action.due %>
                 </span>
-              <% } %>
-            </div>
+              </div>
+            <% } %>
+            <p class="text-sm text-gray-900 pr-2" style="word-wrap: break-word; overflow-wrap: break-word;"><%= action.text %></p>
           </div>
         <% }); %>
       </div>

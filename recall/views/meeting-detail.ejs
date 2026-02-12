@@ -481,7 +481,7 @@
         return topic[key].map(item => typeof item === 'string' ? item : (item.text || item.summary || item.description || item.details || item.content || item.note || JSON.stringify(item)));
       }
     }
-    // Handle AssemblyAI format: {topic: "title", details: "description"}
+    // Handle Super Agent format: {topic: "title", details: "description"}
     if (topic.details && typeof topic.details === 'string') return [topic.details];
     if (topic.summary) return [topic.summary];
     if (topic.description) return [topic.description];
