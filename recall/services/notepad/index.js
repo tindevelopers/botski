@@ -181,12 +181,14 @@ Guidelines for the summary:
 Guidelines for highlights:
 - 5-10 bullets, concise and scannable
 - Focus on decisions, agreements, risks, blockers, and major updates
-- Include the driving speaker and a timestamp when available; otherwise set timestamp_seconds to null
+- Include the driving speaker and extract the timestamp_seconds from the transcript (look for [Xs] markers in the transcript where X is seconds); set to null only if no timestamp marker is present
+- Match the timestamp to the most relevant statement in the transcript
 
 Guidelines for detailed_notes (paraphrased quotes):
 - 8-15 bullets capturing the most important spoken statements
 - Paraphrase meaning in 1-2 sentences; include a short direct quote snippet when useful
-- Include speaker and timestamp when available; otherwise set timestamp_seconds to null
+- Extract timestamp_seconds from the transcript timestamp markers [Xs] where X is the number of seconds from the start
+- Include the speaker name exactly as it appears in the transcript
 - Prefer high-signal phrases, commitments, and nuanced points over generic chatter
 
 Guidelines for stats:

@@ -122,14 +122,16 @@ export default async (job) => {
 
   console.log(`[ENRICH] Found ${chunks.length} transcript chunks for artifact ${artifact.id}`);
 
-  // Format transcript with speaker attribution for better AI understanding
+  // Format transcript with speaker attribution and timestamps for better AI understanding
   const validChunks = chunks.filter((c) => isValidText(c.text));
   const transcriptText =
     validChunks.length > 0
       ? validChunks
           .map((c) => {
             const speaker = c.speaker || "Unknown Speaker";
-            return `${speaker}: ${c.text.trim()}`;
+            const timestampSeconds = c.startTimeMs != null ? Math.floor(c.startTimeMs / 1000) : null;
+            const timestampLabel = timestampSeconds != null ? `[${timestampSeconds}s]` : "";
+            return `${speaker} ${timestampLabel}: ${c.text.trim()}`;
           })
           .join("\n\n")
       : null;

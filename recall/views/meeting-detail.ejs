@@ -1007,7 +1007,7 @@
           highlightsEl.innerHTML = highlights.length
             ? highlights.map((item) => {
                 const title = item.title || 'Highlight';
-                const summary = item.summary || item.text || item.description || '';
+                const summary = item.content || item.summary || item.text || item.description || '';
                 return `<li class="rounded-md border border-gray-200 p-3"><div class="text-sm font-semibold text-gray-900">${title}</div><p class="mt-1 text-xs text-gray-600">${summary}</p></li>`;
               }).join('')
             : '<li class="text-xs text-gray-500">No highlights available.</li>';
@@ -2014,7 +2014,7 @@
         sections.push('## Highlights');
         data.highlights.forEach((item, idx) => {
           if (typeof item === 'object') {
-            sections.push(`- ${item.title || `Highlight ${idx + 1}`}: ${item.summary || item.text || ''}`);
+            sections.push(`- ${item.title || `Highlight ${idx + 1}`}: ${item.content || item.summary || item.text || ''}`);
           } else {
             sections.push(`- ${item}`);
           }

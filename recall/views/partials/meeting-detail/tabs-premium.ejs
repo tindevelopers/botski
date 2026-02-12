@@ -260,7 +260,7 @@
                 <div class="flex items-start justify-between">
                   <div>
                     <p class="text-sm font-semibold text-gray-900"><%= item.title || 'Highlight ' + (idx + 1) %></p>
-                    <p class="mt-1 text-sm text-gray-700"><%= item.summary || item.text || '' %></p>
+                    <p class="mt-1 text-sm text-gray-700"><%= item.content || item.summary || item.text || '' %></p>
                     <div class="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
                       <% if (item.speaker) { %>
                         <span class="inline-flex items-center rounded-full bg-white px-2 py-0.5 ring-1 ring-gray-200">

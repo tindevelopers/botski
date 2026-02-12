@@ -96,15 +96,15 @@ export default {
       requestedOutputs.push("follow_ups: Array of suggested follow-up items");
     }
     requestedOutputs.push("topics: Array of main topics/themes discussed");
-    requestedOutputs.push("highlights: Array of 5-10 concise bullets");
-    requestedOutputs.push("detailed_notes: Array of 8-15 paraphrased quote-style bullets");
+    requestedOutputs.push("highlights: Array of 5-10 concise bullets with speaker, content, and timestamp_seconds (extract from [Xs] markers in transcript)");
+    requestedOutputs.push("detailed_notes: Array of 8-15 paraphrased quote-style bullets with speaker, content/note, and timestamp_seconds (extract from [Xs] markers)");
     requestedOutputs.push("stats: Object with lightweight stats");
     requestedOutputs.push("sentiment: Object with score, label, and confidence");
     requestedOutputs.push("key_insights: Array of key insights");
     requestedOutputs.push("decisions: Array of decisions made");
     requestedOutputs.push("outcome: Overall meeting outcome");
 
-    const systemPrompt = `You are an expert meeting summarizer and analyst. Return valid JSON with these fields: ${requestedOutputs.map((o, i) => `${i + 1}. ${o.split(':')[0]}`).join(", ")}.`;
+    const systemPrompt = `You are an expert meeting summarizer and analyst. The transcript includes timestamp markers in the format [Xs] where X is seconds from start. Extract these timestamps into the timestamp_seconds field for highlights and detailed_notes. Return valid JSON with these fields: ${requestedOutputs.map((o, i) => `${i + 1}. ${o.split(':')[0]}`).join(", ")}.`;
 
     const talkTimeHint = speakerStats && speakerStats.length
       ? `Speaker talk-time hints: ${speakerStats.map((s) => `${s.name || "Unknown"}: ${Math.round(s.talkTimeSeconds || 0)}s`).join("; ")}`
@@ -172,15 +172,15 @@ Please analyze this meeting transcript and provide a comprehensive summary with 
       ? participants.map(p => p.name || p.email || p).filter(Boolean).join(", ")
       : "";
 
-    const systemPrompt = `You are an expert meeting summarizer. Return valid JSON with: summary, action_items, follow_ups, topics, highlights, detailed_notes, stats, sentiment, key_insights, decisions, outcome.`;
+    const systemPrompt = `You are an expert meeting summarizer. The transcript includes timestamp markers [Xs] where X is seconds from start. Extract these into timestamp_seconds fields for highlights and detailed_notes. Return valid JSON with: summary, action_items, follow_ups, topics, highlights (with speaker, content, timestamp_seconds), detailed_notes (with speaker, content/note, timestamp_seconds), stats, sentiment, key_insights, decisions, outcome.`;
 
     const userMessage = `Meeting: ${title}
 Participants: ${participantNames || "Not specified"}
 
-Transcript:
+Transcript (with [Xs] timestamp markers):
 ${transcriptText}
 
-Analyze and provide comprehensive summary in JSON format.`;
+Analyze and provide comprehensive summary in JSON format. Extract timestamp_seconds from the [Xs] markers in the transcript.`;
 
     const messages = [
       { role: "user", content: userMessage },

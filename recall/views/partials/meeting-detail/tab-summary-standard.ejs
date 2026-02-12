@@ -249,7 +249,7 @@
               <% meeting.highlights.slice(0, 2).forEach(function(item, idx) { %>
                 <li class="p-2 rounded-lg border border-gray-100 bg-gray-50">
                   <p class="text-sm font-medium text-gray-900"><%= item.title || 'Highlight ' + (idx + 1) %></p>
-                  <p class="mt-0.5 text-sm text-gray-600"><%= item.summary || item.text || '' %></p>
+                  <p class="mt-0.5 text-sm text-gray-600"><%= item.content || item.summary || item.text || '' %></p>
                 </li>
               <% }); %>
             </ul>
@@ -283,7 +283,7 @@
                       <span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-blue-700"><%= item.topic %></span>
                     <% } %>
                   </div>
-                  <p class="text-sm text-gray-800"><%= item.paraphrase || item.summary || item.text || '' %></p>
+                  <p class="text-sm text-gray-800"><%= item.paraphrase || item.content || item.note || item.summary || item.text || '' %></p>
                 </li>
               <% }); %>
             </ul>

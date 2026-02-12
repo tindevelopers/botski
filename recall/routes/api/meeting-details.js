@@ -1136,7 +1136,7 @@ function buildMarkdownExport(data) {
     data.highlights.forEach((item, idx) => {
       if (typeof item === "object") {
         const title = item.title || `Highlight ${idx + 1}`;
-        const text = item.summary || item.text || "";
+        const text = item.content || item.summary || item.text || "";
         lines.push(`**${title}**`);
         if (text) lines.push(text);
         if (item.speaker) lines.push(`_Speaker: ${item.speaker}_`);
@@ -1154,7 +1154,7 @@ function buildMarkdownExport(data) {
     data.detailedNotes.forEach((item) => {
       if (typeof item === "object") {
         const speaker = item.speaker ? `**${item.speaker}:** ` : "";
-        const text = item.paraphrase || item.summary || item.text || "";
+        const text = item.paraphrase || item.content || item.note || item.summary || item.text || "";
         lines.push(`- ${speaker}${text}`);
         if (item.quote) lines.push(`  > "${item.quote}"`);
       } else {
