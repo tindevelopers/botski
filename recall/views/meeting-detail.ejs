@@ -356,8 +356,20 @@
       return speakerColorMap[str];
     }
     
-    function formatTime(ms) {
-      if (!ms && ms !== 0) return '';
+    function formatTime(value) {
+      if (value === null || value === undefined || value === '') return '';
+      
+      // Handle both milliseconds and seconds
+      let ms = value;
+      
+      // If value is a number less than 100000, assume it's in seconds and convert to ms
+      if (typeof value === 'number' && value < 100000) {
+        ms = value * 1000;
+      }
+      
+      // If still not a valid number, return empty
+      if (typeof ms !== 'number' || isNaN(ms)) return '';
+      
       const mins = Math.floor(ms / 60000);
       const secs = Math.floor((ms % 60000) / 1000);
       return `${mins}:${String(secs).padStart(2, '0')}`;
@@ -370,7 +382,7 @@
       const showSpeaker = chunk.speaker !== currentSpeaker;
       currentSpeaker = chunk.speaker;
       const color = getSpeakerColor(chunk.speaker);
-      const time = formatTime(chunk.timestamp || chunk.startTimeMs);
+      const time = formatTime(chunk.timestamp || chunk.startTimeMs || chunk.start || chunk.time);
       
       html += `<div class="w-full ${showSpeaker ? 'pt-3 border-t border-gray-100' : ''}">`;
       
