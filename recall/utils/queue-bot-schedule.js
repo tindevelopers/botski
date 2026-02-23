@@ -17,7 +17,7 @@ export async function queueBotScheduleJob(recallEventId, calendarId = null, opti
   const jobId = `bot-schedule-${recallEventId}`;
   
   // #region agent log
-  fetch('http://127.0.0.1:7250/ingest/bf0206c3-6e13-4499-92a3-7fb2b7527fcf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'utils/queue-bot-schedule.js:queue_start',message:'Queueing bot schedule job',data:{recallEventId,calendarId,forceReschedule,jobId},timestamp:Date.now(),sessionId:'debug-session',runId:'settings-change',hypothesisId:'B'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'utils/queue-bot-schedule.js:queue_start',message:'Queueing bot schedule job',data:{recallEventId,calendarId,forceReschedule,jobId},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
   // #endregion
   
   // If forceReschedule is true, remove any existing job first
@@ -66,7 +66,7 @@ export async function queueBotScheduleJob(recallEventId, calendarId = null, opti
     console.log(`[BOT-SCHEDULE] ✅ Job queued successfully: eventId=${recallEventId} jobId=${jobId} queueJobId=${job?.id}`);
     
     // #region agent log
-    fetch('http://127.0.0.1:7250/ingest/bf0206c3-6e13-4499-92a3-7fb2b7527fcf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'utils/queue-bot-schedule.js:job_added',message:'Job added successfully',data:{recallEventId,jobId,jobIdResult:job?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'settings-change',hypothesisId:'B'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'utils/queue-bot-schedule.js:job_added',message:'Job added successfully',data:{recallEventId,jobId,jobIdResult:job?.id},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
     // #endregion
     
     return job;

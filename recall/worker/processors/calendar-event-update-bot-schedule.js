@@ -2,7 +2,7 @@ import Recall from "../../services/recall/index.js";
 import db from "../../db.js";
 import { buildBotConfig } from "../../logic/bot-config.js";
 import { telemetryEvent } from "../../utils/telemetry.js";
-import { checkForSharedBot, getSharedDeduplicationKey } from "../../utils/shared-bot-scheduling.js";
+import { checkForSharedBot, getSharedDeduplicationKey, findExistingBotForMeeting } from "../../utils/shared-bot-scheduling.js";
 
 // add or remove bot for a calendar event based on its record status
 export default async (job) => {
@@ -108,6 +108,10 @@ export default async (job) => {
       // Check if another user from the same company already has a bot scheduled
       sharedBotInfo = await checkForSharedBot(event.meetingUrl, calendar.userId, userEmail);
       
+      // #region agent log
+      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:shared_bot_check',message:'Shared bot check result',data:{recallEventId:event.recallId,eventId:event.id,hasSharedBot:sharedBotInfo?.hasSharedBot,sharedBotId:sharedBotInfo?.sharedBotId,sharedEventId:sharedBotInfo?.sharedEventId},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+      // #endregion
+      
       if (sharedBotInfo.hasSharedBot && sharedBotInfo.sharedBotId) {
         // Another user from the same company already has a bot scheduled for this meeting
         // Skip scheduling to avoid duplicate bots
@@ -131,6 +135,10 @@ export default async (job) => {
         console.log(`[SHARED-BOT] Using shared deduplication key: ${deduplicationKey}`);
       }
     }
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:dedup_key_resolved',message:'Dedup key before API call',data:{recallEventId:event.recallId,eventId:event.id,deduplicationKey,isSharedKey:deduplicationKey!==`recall-event-${event.recallId}`},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+    // #endregion
     
     // Log only a compact summary (Railway log rate limiting can drop important messages)
     console.log(
@@ -176,17 +184,31 @@ export default async (job) => {
       }
       
       // #region agent log
-      fetch('http://127.0.0.1:7250/ingest/bf0206c3-6e13-4499-92a3-7fb2b7527fcf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:api_call_success',message:'Recall API call succeeded',data:{eventId:event.id,recallEventId:event.recallId,hasResult:!!updatedEventFromRecall,resultKeys:updatedEventFromRecall?Object.keys(updatedEventFromRecall):[],botIds,botCount:botIds.length},timestamp:Date.now(),sessionId:'debug-session',runId:'bot-schedule',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:api_call_success',message:'Recall API call succeeded',data:{eventId:event.id,recallEventId:event.recallId,deduplicationKey,hasResult:!!updatedEventFromRecall,botIds,botCount:botIds.length},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
       // #endregion
       
     } catch (error) {
       // #region agent log
-      fetch('http://127.0.0.1:7250/ingest/bf0206c3-6e13-4499-92a3-7fb2b7527fcf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:api_call_failed',message:'Recall API call failed',data:{eventId:event.id,recallEventId:event.recallId,errorMessage:error.message,errorStatus:error.res?.status,hasErrorBody:!!error.body,errorBodyPreview:error.body?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'bot-schedule',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:api_call_failed',message:'Recall API call failed',data:{eventId:event.id,recallEventId:event.recallId,deduplicationKey,errorMessage:error.message,errorStatus:error.res?.status,is409:error.message?.includes('409')||error.message?.includes('conflict')},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
       // #endregion
       
-      // Handle 409 conflict gracefully - this means deduplication is working correctly
-      // Another request with the same deduplication key is already in progress
+      // Handle 409 conflict gracefully - another request with same deduplication key succeeded (shared bot).
+      // Attach the existing bot to this event's record so our DB and UI show the meeting as having the bot.
       if (error.message?.includes('status 409') || error.message?.includes('conflict')) {
+        const usedSharedKey = deduplicationKey !== `recall-event-${event.recallId}`;
+        if (usedSharedKey && event.meetingUrl && userEmail) {
+          const existing = await findExistingBotForMeeting(
+            event.meetingUrl,
+            userEmail,
+            sharedBotInfo?.sharedEventId
+          );
+          if (existing?.bots?.length > 0) {
+            const merged = { ...(event.recallData || {}), bots: existing.bots };
+            event.recallData = merged;
+            await event.save();
+            console.log(`[SHARED-BOT] Attached existing bot to event ${event.id} (409): botIds=[${existing.bots.map(b => b.id).join(', ')}]`);
+          }
+        }
         console.log(`[BOT_CONFIG] Bot scheduling deduplicated (409 conflict) for event ${event.id} - another request is in progress`);
         return; // Don't throw - this is expected behavior for shared bots
       }

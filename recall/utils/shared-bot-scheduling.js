@@ -187,3 +187,60 @@ export function getSharedDeduplicationKey(meetingUrl, userEmail) {
   return `shared-bot-${companyDomain}-${normalizedUrl.replace(/[^a-z0-9]/g, '-')}`;
 }
 
+/**
+ * Find a Recall calendar event that already has a bot for the same meeting (same company).
+ * Used when we get 409 so we can attach the existing bot to the current event's record.
+ *
+ * @param {string} meetingUrl - The meeting URL
+ * @param {string} currentUserEmail - The current user's email (for company domain)
+ * @param {string} [preferredRecallEventId] - If set, try this Recall event first (e.g. from sharedBotInfo)
+ * @returns {Promise<{ bots: Array } | null>} The Recall event payload (with bots) or null
+ */
+export async function findExistingBotForMeeting(meetingUrl, currentUserEmail, preferredRecallEventId = null) {
+  const normalizedUrl = normalizeMeetingUrl(meetingUrl);
+  const companyDomain = extractCompanyDomain(currentUserEmail);
+  if (!normalizedUrl || !companyDomain) return null;
+
+  if (preferredRecallEventId) {
+    try {
+      const recallEvent = await Recall.getCalendarEvent(preferredRecallEventId);
+      const bots = recallEvent?.bots || [];
+      if (bots.length > 0) return recallEvent;
+    } catch (err) {
+      // Fall through to DB lookup
+    }
+  }
+
+  const companyUsers = await db.User.findAll({
+    where: { email: { [db.Sequelize.Op.like]: `%@${companyDomain}` } },
+    attributes: ['id'],
+  });
+  if (companyUsers.length === 0) return null;
+  const companyCalendarIds = (
+    await db.Calendar.findAll({
+      where: { userId: { [db.Sequelize.Op.in]: companyUsers.map(u => u.id) } },
+      attributes: ['id'],
+    })
+  ).map(c => c.id);
+  if (companyCalendarIds.length === 0) return null;
+
+  const candidates = await db.CalendarEvent.findAll({
+    where: { calendarId: { [db.Sequelize.Op.in]: companyCalendarIds } },
+    attributes: ['id', 'recallId', 'meetingUrl', 'recallData'],
+  });
+  for (const ev of candidates) {
+    if (normalizeMeetingUrl(ev.meetingUrl) !== normalizedUrl) continue;
+    const bots = ev.recallData?.bots || [];
+    if (bots.length > 0) {
+      try {
+        const recallEvent = await Recall.getCalendarEvent(ev.recallId);
+        if (recallEvent?.bots?.length > 0) return recallEvent;
+      } catch (err) {
+        // Use stale recallData as last resort so we at least have bot ids
+        return { bots };
+      }
+    }
+  }
+  return null;
+}
+

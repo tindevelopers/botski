@@ -2365,7 +2365,7 @@ export default async (req, res) => {
       if (artifactStartTime && artifactEndTime) {
         const calcDuration = Math.max(0, (new Date(artifactEndTime) - new Date(artifactStartTime)) / 1000);
         // #region agent log
-        fetch('http://127.0.0.1:7250/ingest/bf0206c3-6e13-4499-92a3-7fb2b7527fcf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/meetings/list.js:duration_calc',message:'Using artifact start/end times',data:{...durationDebug,calculatedDuration:calcDuration,source:'artifact_start_end_times'},timestamp:Date.now(),sessionId:'debug-session',runId:'duration-debug',hypothesisId:'C'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/meetings/list.js:duration_calc',message:'Using artifact start/end times',data:{...durationDebug,calculatedDuration:calcDuration,source:'artifact_start_end_times'},timestamp:Date.now(),hypothesisId:'H-DUR-1'})}).catch(()=>{});
         // #endregion
         return calcDuration;
       }
@@ -2390,14 +2390,14 @@ export default async (req, res) => {
           // Don't return - continue to next fallback
         } else {
           // #region agent log
-          fetch('http://127.0.0.1:7250/ingest/bf0206c3-6e13-4499-92a3-7fb2b7527fcf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/meetings/list.js:duration_calc',message:'Using calendar event times (scheduled)',data:{...durationDebug,calculatedDuration:calcDuration,source:'calendar_event_times'},timestamp:Date.now(),sessionId:'debug-session',runId:'duration-debug',hypothesisId:'D'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/meetings/list.js:duration_calc',message:'Using calendar event times (scheduled)',data:{...durationDebug,calculatedDuration:calcDuration,source:'calendar_event_times'},timestamp:Date.now(),hypothesisId:'H-DUR-1'})}).catch(()=>{});
           // #endregion
           return calcDuration;
         }
       }
       
       // #region agent log
-      fetch('http://127.0.0.1:7250/ingest/bf0206c3-6e13-4499-92a3-7fb2b7527fcf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/meetings/list.js:duration_calc',message:'No duration found',data:{...durationDebug,calculatedDuration:null,source:'none'},timestamp:Date.now(),sessionId:'debug-session',runId:'duration-debug',hypothesisId:'F'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/meetings/list.js:duration_calc',message:'No duration found',data:{...durationDebug,calculatedDuration:null,source:'none'},timestamp:Date.now(),hypothesisId:'H-DUR-1'})}).catch(()=>{});
       // #endregion
       return null;
     })();
