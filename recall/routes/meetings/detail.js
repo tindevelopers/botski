@@ -571,15 +571,18 @@ export default async (req, res) => {
 
   // Enabled publish targets for current user (so UI can show Publish to Notion/Slack/Teamwork etc.)
   let enabledPublishTargets = [];
-  try {
-    enabledPublishTargets = await db.PublishTarget.findAll({
-      where: { userId: req.authentication.user.id, enabled: true },
-      attributes: ["type"],
-      order: [["type", "ASC"]],
-    });
-    enabledPublishTargets = enabledPublishTargets.map((t) => ({ type: t.type }));
-  } catch (err) {
-    console.warn("[meetings/detail] PublishTarget lookup failed:", err?.message || err);
+  const currentUserId = req.authentication?.user?.id ?? currentUser?.id ?? userId;
+  if (currentUserId && db.PublishTarget) {
+    try {
+      const targets = await db.PublishTarget.findAll({
+        where: { userId: currentUserId, enabled: true },
+        attributes: ["type"],
+        order: [["type", "ASC"]],
+      });
+      enabledPublishTargets = targets.map((t) => ({ type: t.type }));
+    } catch (err) {
+      console.warn("[meetings/detail] PublishTarget lookup failed:", err?.message || err);
+    }
   }
 
   return res.render("meeting-detail.ejs", {
@@ -587,7 +590,7 @@ export default async (req, res) => {
     user: req.authentication.user,
     meeting,
     publishDeliveries,
-    enabledPublishTargets,
+    enabledPublishTargets: Array.isArray(enabledPublishTargets) ? enabledPublishTargets : [],
   });
 };
 
