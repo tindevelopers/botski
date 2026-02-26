@@ -104,7 +104,7 @@
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
           <!-- Main content column: full-width tabbed interface -->
           <div class="lg:col-span-12 w-full">
-            <%- include('partials/meeting-detail/tabs', { meeting: meeting, publishDeliveries: publishDeliveries }) -%>
+            <%- include('partials/meeting-detail/tabs', { meeting: meeting, publishDeliveries: publishDeliveries, enabledPublishTargets: typeof enabledPublishTargets !== 'undefined' ? enabledPublishTargets : [] }) -%>
 
 
           </div>
@@ -115,7 +115,7 @@
   </div>
 </div>
 
-<%- include('partials/meeting-detail/actions-drawer', { meeting: meeting }) -%>
+<%- include('partials/meeting-detail/actions-drawer', { meeting: meeting, enabledPublishTargets: typeof enabledPublishTargets !== 'undefined' ? enabledPublishTargets : [] }) -%>
 
 <script type="application/json" id="meeting-client-bootstrap"><%- JSON.stringify({
   meetingId: meeting.readableId || meeting.id,
@@ -1358,6 +1358,9 @@
         } else if (result.error === 'Notion destination not configured') {
           showNotification('Please configure a Notion destination in Settings first.', 'error');
           btnText.textContent = 'No destination configured';
+        } else if (result.error === 'No publishing destination configured') {
+          showNotification('Please configure at least one destination in Settings → Publishing first.', 'error');
+          btnText.textContent = 'No destination configured';
         } else {
           throw new Error(result.message || result.error || 'Failed to queue publish');
         }
@@ -1369,7 +1372,7 @@
       
       if (result.success) {
         if (result.action === 'publish') {
-          showNotification('Publishing to Notion... This may take a moment.', 'info');
+          showNotification('Publishing to your destinations... This may take a moment.', 'info');
           btnText.textContent = 'Publishing...';
           
           // Poll for publish completion (check publish deliveries)
@@ -1384,13 +1387,13 @@
             }
           }, 2000);
         } else {
-          showNotification('Generating summary first, then will publish to Notion...', 'info');
+          showNotification('Generating summary first, then will publish to your destinations...', 'info');
           btnText.textContent = 'Enriching then publish';
           
           // Wait for summary, then publish
           const summaryReady = await pollForSummary(meetingId, 60, 2000);
           if (summaryReady) {
-            showNotification('Summary ready! Publishing to Notion...', 'info');
+            showNotification('Summary ready! Publishing to your destinations...', 'info');
             // The enrichment job should have triggered publishing automatically
             setTimeout(() => {
               window.location.reload();

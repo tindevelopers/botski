@@ -353,7 +353,7 @@
 
     <!-- Quick Actions Tab -->
     <div id="content-quickactions" class="tab-content hidden" role="tabpanel" aria-labelledby="tab-quickactions">
-      <%- include('tab-quickactions', { meeting }) -%>
+      <%- include('tab-quickactions', { meeting, enabledPublishTargets: enabledPublishTargets || [] }) -%>
     </div>
   </div>
 </div>

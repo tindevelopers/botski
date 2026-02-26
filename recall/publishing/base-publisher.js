@@ -20,9 +20,7 @@ export class BasePublisher {
     if (!target) {
       throw new Error(`[${this.name}] Missing publish target`);
     }
-    if (!integration) {
-      throw new Error(`[${this.name}] Missing integration`);
-    }
+    // integration is optional for API-key-based targets (e.g. Teamwork)
 
     // Validate configuration
     this.validateConfig(target.config || {});

@@ -85,16 +85,20 @@ export default async (job) => {
       const integration = await db.Integration.findOne({
         where: { userId, provider: target.type },
       });
-      if (!integration) {
+      // OAuth-based targets (notion, slack) require an Integration; API-key targets (e.g. teamwork) do not
+      if (!integration && ["notion", "slack"].includes(target.type)) {
         throw new Error(`Missing integration for provider ${target.type}`);
       }
-      
-      console.log(`[PUBLISHING] Found integration for ${target.type}, calling publisher...`);
+      if (integration) {
+        console.log(`[PUBLISHING] Found integration for ${target.type}, calling publisher...`);
+      } else {
+        console.log(`[PUBLISHING] No integration for ${target.type} (API-key target), calling publisher...`);
+      }
 
       const result = await publisher.publish({
         meetingSummary,
         target,
-        integration,
+        integration: integration || null,
       });
 
       console.log(`[PUBLISHING] Successfully published to ${target.type}. Result:`, {

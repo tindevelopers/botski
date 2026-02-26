@@ -11,29 +11,16 @@ export default async (req, res) => {
   const userId = req.authentication.user.id;
 
   try {
-    // Check if Notion integration exists
-    const notionIntegration = await db.Integration.findOne({
-      where: { userId, provider: "notion" },
+    // Require at least one enabled publish target (Notion, Slack, Teamwork, etc.)
+    const enabledTarget = await db.PublishTarget.findOne({
+      where: { userId, enabled: true },
     });
 
-    if (!notionIntegration) {
+    if (!enabledTarget) {
       return res.status(400).json({
         success: false,
-        error: "Notion not connected",
-        message: "Please connect your Notion account in Settings first.",
-      });
-    }
-
-    // Check if Notion target is configured
-    const notionTarget = await db.PublishTarget.findOne({
-      where: { userId, type: "notion", enabled: true },
-    });
-
-    if (!notionTarget) {
-      return res.status(400).json({
-        success: false,
-        error: "Notion destination not configured",
-        message: "Please configure a Notion destination in Settings first.",
+        error: "No publishing destination configured",
+        message: "Please configure at least one destination in Settings → Publishing first.",
       });
     }
 
