@@ -112,3 +112,22 @@ export async function refreshMicrosoftOutlookToken(refreshToken) {
   
   return await response.json();
 }
+
+/**
+ * Fetch Microsoft user profile (email, name) for sign-in flow.
+ * @param {string} accessToken - Microsoft OAuth access token
+ * @returns {Promise<{ email: string, name: string }>}
+ */
+export async function fetchMicrosoftUserProfile(accessToken) {
+  const response = await fetch("https://graph.microsoft.com/v1.0/me", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Microsoft Graph /me failed: ${response.status} ${text}`);
+  }
+  const data = await response.json();
+  const email = data.mail || data.userPrincipalName || data.id;
+  const name = data.displayName || email?.split("@")[0] || "User";
+  return { email: (email || "").toLowerCase(), name: name || "User" };
+}

@@ -1,4 +1,8 @@
-import { fetchTokensFromAuthorizationCodeForMicrosoftOutlook } from "../../logic/oauth.js";
+import {
+  fetchTokensFromAuthorizationCodeForMicrosoftOutlook,
+  fetchMicrosoftUserProfile,
+} from "../../logic/oauth.js";
+import { getAuthTokenForUser } from "../../logic/auth.js";
 import { generateNotice } from "../utils.js";
 import Recall from "../../services/recall/index.js";
 import db from "../../db.js";
@@ -19,7 +23,65 @@ export default async (req, res) => {
   }
 
   try {
-    const { userId, calendarId } = JSON.parse(req.query.state);
+    const state = JSON.parse(req.query.state || "{}");
+    const { intent } = state;
+    const userId = state.userId;
+    let calendarId = state.calendarId;
+
+    // Sign-in / sign-up with Microsoft (no existing user)
+    if (intent === "signin") {
+      const oauthTokens =
+        await fetchTokensFromAuthorizationCodeForMicrosoftOutlook(req.query.code);
+      if (oauthTokens.error) {
+        res.cookie(
+          "notice",
+          JSON.stringify(
+            generateNotice(
+              "error",
+              `Microsoft sign-in failed: ${oauthTokens.error_description || oauthTokens.error}`
+            )
+          )
+        );
+        return res.redirect("/sign-in");
+      }
+      const profile = await fetchMicrosoftUserProfile(oauthTokens.access_token);
+      if (!profile.email) {
+        res.cookie(
+          "notice",
+          JSON.stringify(generateNotice("error", "Microsoft did not provide an email."))
+        );
+        return res.redirect("/sign-in");
+      }
+      let user = await db.User.findOne({ where: { email: profile.email } });
+      if (!user) {
+        user = await db.User.create({
+          email: profile.email,
+          name: profile.name,
+          password: `oauth-ms-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        });
+        console.log(`Created user via Microsoft sign-in: ${profile.email}`);
+      }
+      res.cookie("authToken", getAuthTokenForUser(user), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+      });
+      res.cookie(
+        "notice",
+        JSON.stringify(generateNotice("success", "Signed in with Microsoft."))
+      );
+      return res.redirect("/");
+    }
+
+    // Calendar connection flow (existing user)
+    if (!userId) {
+      res.cookie(
+        "notice",
+        JSON.stringify(generateNotice("error", "Invalid Microsoft OAuth state. Please try connecting again from Settings."))
+      );
+      return res.redirect("/");
+    }
     console.log(
       `Received microsoft oauth callback for user ${userId} with code ${req.query.code}`
     );

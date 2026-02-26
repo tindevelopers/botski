@@ -1,5 +1,29 @@
 # Microsoft Outlook OAuth Setup Guide
 
+## Domain: meeting.tin.info (and internal testers)
+
+If your app is served at **https://meeting.tin.info** and you want **internal testers only** (no production, no per-user authorization):
+
+1. **Redirect URI** in Azure must be exactly:
+   ```
+   https://meeting.tin.info/oauth-callback/microsoft-outlook
+   ```
+   (No trailing slash, HTTPS only.) Add this under **Authentication** → **Platform configurations** → **Web** → **Redirect URIs**.
+
+2. **Supported account types** (for internal-only, one org):
+   - Use **"Accounts in this organizational directory only (Single tenant)"** so only your org’s users can sign in.
+   - You do **not** need multi-tenant unless you need other orgs or personal Microsoft accounts.
+
+3. **No per-user authorization** (all internal users can use the app):
+   - **API permissions**: Add the delegated permissions below, then click **Grant admin consent for &lt;Your org&gt;**. One-time admin consent applies to the whole tenant; users won’t be prompted to consent.
+   - **Enterprise application**: After the app is used at least once, go to **Azure AD** → **Enterprise applications** → find your app by name or client ID → **Properties** → set **User assignment required?** to **No**. Then any user in your directory can use the app without being assigned.
+
+4. **Environment**: Ensure `PUBLIC_URL=https://meeting.tin.info` where the app runs so OAuth redirects and token exchange use this domain.
+
+No Microsoft “app approval” or AppSource submission is required for internal use; the app is tenant-internal only.
+
+---
+
 ## Step 1: Create Azure App Registration
 
 1. Go to [Azure Portal](https://portal.azure.com/)
@@ -7,19 +31,18 @@
 3. Click **"+ New registration"**
 4. Fill in:
    - **Name**: `Recall V2 Demo` (or any name)
-   - **Supported account types**: **IMPORTANT** - Select:
-     - ✅ **"Accounts in any organizational directory and personal Microsoft accounts"** (Multi-tenant)
-     - ❌ Do NOT select "Accounts in this organizational directory only" (Single-tenant)
-   - **Redirect URI**: 
+   - **Supported account types**:
+     - **Internal testers (one org)**: **"Accounts in this organizational directory only"** (Single tenant).
+     - **Multiple orgs or personal accounts**: **"Accounts in any organizational directory and personal Microsoft accounts"** (Multi-tenant)
+   - **Redirect URI**:
      - Platform: **Web**
-     - URI: `https://recall-recall-production.up.railway.app/oauth-callback/microsoft-outlook`
+     - URI: `https://meeting.tin.info/oauth-callback/microsoft-outlook` (or your deployment URL, e.g. `https://recall-recall-production.up.railway.app/oauth-callback/microsoft-outlook`)
 5. Click **Register**
 
-**⚠️ CRITICAL**: If you already created the app as single-tenant, you need to change it:
+**If you need to change account type later:**
 1. Go to **Authentication** in your app registration
 2. Under **Supported account types**, click **Edit**
-3. Change to **"Accounts in any organizational directory and personal Microsoft accounts"**
-4. Click **Save**
+3. Choose single-tenant or multi-tenant as above, then **Save**
 
 ## Step 2: Get Client ID and Secret
 
@@ -42,13 +65,13 @@
 2. Click **"+ Add a permission"**
 3. Select **Microsoft Graph**
 4. Select **Delegated permissions**
-5. Add these permissions:
-   - `offline_access` (for refresh tokens)
-   - `Calendars.Read` (to read calendar events)
-   - `openid` (for authentication)
-   - `email` (to get user email)
+5. Add these **Delegated** permissions:
+   - `offline_access` (refresh tokens)
+   - `Calendars.Read` (calendar events)
+   - `openid`, `email` (authentication)
+   - `OnlineMeetings.Read`, `OnlineMeetingTranscript.Read.All`, `OnlineMeetingRecording.Read.All` (Teams meetings/recordings/transcripts, if used)
 6. Click **Add permissions**
-7. Click **Grant admin consent** (if you're an admin) or users will need to consent
+7. Click **Grant admin consent for &lt;Your org&gt;** so internal users don’t need to consent individually
 
 ## Step 4: Set Environment Variables in Railway
 
@@ -69,10 +92,12 @@ Or set them in Railway dashboard:
 
 ## Step 5: Verify Redirect URI
 
-Make sure the redirect URI in Azure matches exactly:
-```
-https://recall-recall-production.up.railway.app/oauth-callback/microsoft-outlook
-```
+The redirect URI is built from `PUBLIC_URL` + `/oauth-callback/microsoft-outlook`. Ensure Azure has that exact URI, e.g.:
+
+- `https://meeting.tin.info/oauth-callback/microsoft-outlook`
+- or `https://recall-recall-production.up.railway.app/oauth-callback/microsoft-outlook`
+
+No trailing slash; must be HTTPS.
 
 ## Step 6: Redeploy (if needed)
 
@@ -89,9 +114,10 @@ railway up
 - Check for typos in the client ID
 
 **Error: Invalid redirect URI**
-- Ensure redirect URI in Azure matches exactly: `https://recall-recall-production.up.railway.app/oauth-callback/microsoft-outlook`
+- Ensure redirect URI in Azure matches exactly (e.g. `https://meeting.tin.info/oauth-callback/microsoft-outlook`)
 - No trailing slash
 - Must be HTTPS (not HTTP)
+- Must match `PUBLIC_URL` in your environment
 
 **Error: Invalid client secret**
 - Verify `MICROSOFT_OUTLOOK_OAUTH_CLIENT_SECRET` is set correctly
@@ -102,9 +128,6 @@ railway up
 - Grant admin consent if required
 
 **Error: AADSTS50194 - Not configured as multi-tenant**
-- This means your app is set to single-tenant but the code uses `/common` endpoint
-- **Fix**: Go to Azure Portal → Your App → **Authentication**
-- Under **Supported account types**, change to **"Accounts in any organizational directory and personal Microsoft accounts"**
-- Click **Save**
-- Wait a few minutes for changes to propagate
-- Try connecting again
+- This appears when the app is single-tenant but you need users from other orgs or personal Microsoft accounts.
+- **Fix**: Go to Azure Portal → Your App → **Authentication** → **Supported account types** → **Edit** → choose **"Accounts in any organizational directory and personal Microsoft accounts"** → **Save**. Wait a few minutes, then try again.
+- If you only need **internal testers** in your org, keep single-tenant and ensure admin consent is granted; no change needed.
