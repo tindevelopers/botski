@@ -579,36 +579,11 @@ export default async (req, res) => {
     console.warn("[meetings/detail] PublishDelivery lookup failed:", err?.message || err);
   }
 
-  // Enabled publish targets for current user (so UI can show Publish to Notion/Slack/Teamwork etc.)
-  let enabledPublishTargets = [];
-  const currentUserId = req.authentication?.user?.id ?? currentUser?.id ?? userId;
-  // #region agent log
-  fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'72392a'},body:JSON.stringify({sessionId:'72392a',location:'recall/routes/meetings/detail.js:beforePublishTarget',message:'before PublishTarget query',data:{currentUserId:!!currentUserId,hasPublishTargetModel:!!db.PublishTarget},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
-  if (currentUserId && db.PublishTarget) {
-    try {
-      const targets = await db.PublishTarget.findAll({
-        where: { userId: currentUserId, enabled: true },
-        attributes: ["type"],
-        order: [["type", "ASC"]],
-      });
-      enabledPublishTargets = targets.map((t) => ({ type: t.type }));
-    } catch (err) {
-      console.warn("[meetings/detail] PublishTarget lookup failed:", err?.message || err);
-    }
-  }
-  // #region agent log
-  fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'72392a'},body:JSON.stringify({sessionId:'72392a',location:'recall/routes/meetings/detail.js:afterPublishTarget',message:'after PublishTarget',data:{enabledPublishTargetsLength:enabledPublishTargets.length},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
-  // #region agent log
-  fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'72392a'},body:JSON.stringify({sessionId:'72392a',location:'recall/routes/meetings/detail.js:beforeRender',message:'about to res.render meeting-detail',data:{},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
-  // #endregion
   return res.render("meeting-detail.ejs", {
     notice: req.notice,
     user: req.authentication.user,
     meeting,
     publishDeliveries,
-    enabledPublishTargets: Array.isArray(enabledPublishTargets) ? enabledPublishTargets : [],
   });
   } catch (err) {
     // #region agent log

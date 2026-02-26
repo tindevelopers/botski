@@ -1,5 +1,5 @@
 <% if (meeting.isPremiumUser) { %>
-  <%- include('tabs-premium', { meeting, publishDeliveries, enabledPublishTargets: enabledPublishTargets || [] }) %>
+  <%- include('tabs-premium', { meeting, publishDeliveries }) %>
 <% } else { %>
-  <%- include('tabs-standard', { meeting, publishDeliveries, enabledPublishTargets: enabledPublishTargets || [] }) %>
+  <%- include('tabs-standard', { meeting, publishDeliveries }) %>
 <% } %>

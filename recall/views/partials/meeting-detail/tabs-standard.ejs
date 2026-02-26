@@ -204,7 +204,7 @@
   <div class="px-4 py-5 sm:px-6">
     <!-- Summary Tab -->
     <div id="content-summary" class="tab-content" role="tabpanel" aria-labelledby="tab-summary">
-      <%- include('tab-summary-standard', { meeting, publishDeliveries, enabledPublishTargets: enabledPublishTargets || [] }) -%>
+      <%- include('tab-summary-standard', { meeting, publishDeliveries }) -%>
     </div>
 
     <!-- Topics Tab -->
@@ -515,7 +515,7 @@
 
     <!-- Quick Actions Tab -->
     <div id="content-quickactions" class="tab-content hidden" role="tabpanel" aria-labelledby="tab-quickactions">
-      <%- include('tab-quickactions', { meeting, enabledPublishTargets: enabledPublishTargets || [] }) -%>
+      <%- include('tab-quickactions', { meeting }) -%>
     </div>
   </div>
 </div>

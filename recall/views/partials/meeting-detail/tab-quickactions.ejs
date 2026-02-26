@@ -46,7 +46,31 @@
         <div class="rounded-lg border border-gray-200 p-4">
           <h3 class="text-sm font-semibold text-gray-900 mb-3">Publish</h3>
           <div class="space-y-2">
-            <%- include('publish-buttons', { meeting, enabledPublishTargets: enabledPublishTargets || [], allDestinationsLabel: 'Publish to All' }) -%>
+            <% if (meeting.artifactId) { %>
+              <button
+                type="button"
+                onclick="openNotionDestinationPicker('<%= meeting.artifactId %>')"
+                class="w-full inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-inset ring-indigo-200 hover:bg-indigo-50"
+              >
+                Publish to Notion
+              </button>
+              <button
+                type="button"
+                onclick="openSlackDestinationPicker('<%= meeting.artifactId %>')"
+                class="w-full inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-sky-600 shadow-sm ring-1 ring-inset ring-sky-200 hover:bg-sky-50"
+              >
+                Publish to Slack
+              </button>
+              <button
+                type="button"
+                onclick="publishToNotion('<%= meeting.artifactId %>', this)"
+                class="w-full inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+              >
+                <span data-publish-text>Publish to All</span>
+              </button>
+            <% } else { %>
+              <p class="text-xs text-gray-500">Publishing is available once the recording is processed.</p>
+            <% } %>
           </div>
         </div>
 
