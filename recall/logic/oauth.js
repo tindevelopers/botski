@@ -88,6 +88,23 @@ export function buildMicrosoftOutlookOAuthUrlForRecording(state) {
   return buildMicrosoftOutlookOAuthUrl(state, { includeRecordingScopes: true });
 }
 
+/** Return scopes used for sign-in (for debugging deployment). */
+export function getMicrosoftSignInScopes() {
+  return buildMicrosoftOutlookOAuthScopes(false);
+}
+
+/**
+ * URL for an org admin to grant consent so all users in their tenant can use the app.
+ * @param {string} [tenantId] - Azure AD tenant ID (e.g. eurastechnology.com's). Default "common" lets admin pick tenant.
+ */
+export function getMicrosoftAdminConsentUrl(tenantId = "common") {
+  const clientId = process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_ID;
+  const redirectUri = encodeURIComponent(
+    process.env.PUBLIC_URL + "/oauth-callback/microsoft-outlook"
+  );
+  return `https://login.microsoftonline.com/${tenantId}/adminconsent?client_id=${clientId}&redirect_uri=${redirectUri}`;
+}
+
 export async function fetchTokensFromAuthorizationCodeForGoogleCalendar(code) {
   const params = {
     client_id: process.env.GOOGLE_CALENDAR_OAUTH_CLIENT_ID,

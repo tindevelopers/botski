@@ -26,6 +26,20 @@ export default async (req, res) => {
   }
 
   try {
+    // Admin consent redirect: Microsoft sends admin_consent=True&tenant=... (no code)
+    if (req.query.admin_consent === "True" || req.query.admin_consent === "true") {
+      res.cookie(
+        "notice",
+        JSON.stringify(
+          generateNotice(
+            "success",
+            "Admin consent granted. Users in your organization can now sign in to TIN Meetings."
+          )
+        )
+      );
+      return res.redirect("/");
+    }
+
     const state = JSON.parse(req.query.state || "{}");
     const { intent } = state;
     const userId = state.userId;
