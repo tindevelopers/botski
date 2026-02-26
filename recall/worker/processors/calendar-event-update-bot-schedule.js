@@ -78,7 +78,8 @@ export default async (job) => {
     });
     
     // #region agent log
-    fetch('http://127.0.0.1:7250/ingest/bf0206c3-6e13-4499-92a3-7fb2b7527fcf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:bot_config_built',message:'Bot config built before scheduling',data:{eventId:event.id,recallEventId:event.recallId,hasBotConfig:!!botConfig,hasRecordingConfig:!!botConfig.recording_config,hasStatusCallback:!!botConfig.status_callback_url,publicUrl:publicUrl||'not-set',botConfigFull:JSON.stringify(botConfig).substring(0,1000)},timestamp:Date.now(),sessionId:'debug-session',runId:'settings-change',hypothesisId:'C'})}).catch(()=>{});
+    const bd = botConfig?.bot_detection;
+    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:bot_config_built',message:'Bot config built (bot_detection sent)',data:{eventId:event.id,recallEventId:event.recallId,hasBotDetection:!!bd,activateAfterNames:bd?.using_participant_names?.activate_after,activateAfterEvents:bd?.using_participant_events?.activate_after,timeoutNames:bd?.using_participant_names?.timeout},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
     // #endregion
     
     // Calculate join_at time - this is when the bot actually joins the meeting
@@ -189,7 +190,7 @@ export default async (job) => {
       
     } catch (error) {
       // #region agent log
-      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:api_call_failed',message:'Recall API call failed',data:{eventId:event.id,recallEventId:event.recallId,deduplicationKey,errorMessage:error.message,errorStatus:error.res?.status,is409:error.message?.includes('409')||error.message?.includes('conflict')},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:api_call_failed',message:'Recall API call failed',data:{eventId:event.id,recallEventId:event.recallId,deduplicationKey,errorMessage:error.message,errorStatus:error.res?.status,is409:error.message?.includes('409')||error.message?.includes('conflict')},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
       // #endregion
       
       // Handle 409 conflict gracefully - another request with same deduplication key succeeded (shared bot).

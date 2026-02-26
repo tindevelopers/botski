@@ -161,8 +161,14 @@ export default async (req, res) => {
     const statusMessage = status?.message;
     console.log(`[RECALL-NOTES] Bot status change: botId=${recallBotId}, eventId=${recallEventId}, code=${statusCode}, sub_code=${subCode}, message=${statusMessage}`);
     // #region agent log
-    const reason = subCode === "automatic_leave" ? "H-BOT-1" : subCode === "bot_detection" ? "H-BOT-2" : (statusCode === "left_call" || statusCode === "call_ended" || subCode === "kicked") ? "H-BOT-3" : "H-BOT-4";
-    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'recall-notes.js:bot.status_change',message:'Bot status change',data:{recallBotId,recallEventId,statusCode,subCode,statusMessage},timestamp:Date.now(),hypothesisId:reason})}).catch(()=>{});
+    const codeStr = String(statusCode || "").toLowerCase();
+    const isJoinFailure = /fail|error|fatal|reject|denied|blocked/.test(codeStr) || subCode === "kicked";
+    let hypothesisId = "H4";
+    if (isJoinFailure || subCode === "kicked") hypothesisId = "H1";
+    else if (subCode === "bot_detection") hypothesisId = "H2";
+    else if (subCode === "automatic_leave" || ((statusCode === "left_call" || statusCode === "call_ended") && !subCode)) hypothesisId = "H3";
+    else if (statusCode === "joined_call" || statusCode === "in_call") hypothesisId = "H-joined";
+    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'recall-notes.js:bot.status_change',message:'Bot status change',data:{recallBotId,recallEventId,statusCode,subCode,statusMessage},timestamp:Date.now(),hypothesisId})}).catch(()=>{});
     // #endregion
     
     // Log all status changes for debugging
