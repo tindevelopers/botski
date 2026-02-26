@@ -21,14 +21,13 @@ function buildGoogleOAuthScopes() {
 
 /**
  * Base scopes for sign-in and calendar (no admin consent required).
- * Use these for initial sign-in and calendar connection so non-admin users can connect.
+ * Excludes OnlineMeetings.Read and recording scopes so non-admin users can connect.
  */
 function getMicrosoftOutlookBaseScopes() {
   const base = [
     "offline_access",
     "User.Read",
     "https://graph.microsoft.com/Calendars.Read",
-    "OnlineMeetings.Read",
     "openid",
     "email",
   ];
@@ -38,11 +37,12 @@ function getMicrosoftOutlookBaseScopes() {
 }
 
 /**
- * Admin-consent-required scopes for Teams recording and transcript.
- * Request these only when the user explicitly enables Teams recording/transcript.
+ * Scopes that may require admin consent: Teams meetings + recording/transcript.
+ * Request these only when the user explicitly enables "Teams recording" in Settings.
  */
 function getMicrosoftOutlookRecordingScopes() {
   return [
+    "OnlineMeetings.Read", // required for finding Teams meetings by joinWebUrl; can require admin consent
     "OnlineMeetingTranscript.Read.All",
     "OnlineMeetingRecording.Read.All",
   ];
