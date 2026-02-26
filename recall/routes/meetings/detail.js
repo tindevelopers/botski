@@ -214,6 +214,9 @@ function extractMeetingTitle(artifact, calendarEvent) {
 }
 
 export default async (req, res) => {
+  // #region agent log
+  fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'72392a'},body:JSON.stringify({sessionId:'72392a',location:'recall/routes/meetings/detail.js:entry',message:'meeting detail handler entry',data:{meetingId:req.params?.id,hasAuth:!!req.authenticated,userId:req.authentication?.user?.id},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+  // #endregion
   if (!req.authenticated) {
     return res.redirect("/sign-in");
   }
@@ -227,6 +230,7 @@ export default async (req, res) => {
     return res.redirect("/sign-in");
   }
 
+  try {
   // FAST INITIAL LOAD: Only fetch minimal metadata, no transcript chunks
   // Artifacts will be lazy-loaded via JavaScript after page renders
   
@@ -340,6 +344,9 @@ export default async (req, res) => {
     }
   }
 
+  // #region agent log
+  fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'72392a'},body:JSON.stringify({sessionId:'72392a',location:'recall/routes/meetings/detail.js:afterSummary',message:'after summary resolution',data:{hasArtifact:!!artifact,hasSummary:!!summary},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+  // #endregion
   // Get transcript chunk count (fast query, no data transfer)
   let transcriptChunkCount = 0;
   if (artifact?.id) {
@@ -557,6 +564,9 @@ export default async (req, res) => {
 
   // Get publish deliveries for this meeting
   let publishDeliveries = [];
+  // #region agent log
+  fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'72392a'},body:JSON.stringify({sessionId:'72392a',location:'recall/routes/meetings/detail.js:beforePublishDelivery',message:'before PublishDelivery',data:{hasSummary:!!summary,summaryId:summary?.id},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
+  // #endregion
   try {
     if (summary) {
       publishDeliveries = await db.PublishDelivery.findAll({
@@ -572,6 +582,9 @@ export default async (req, res) => {
   // Enabled publish targets for current user (so UI can show Publish to Notion/Slack/Teamwork etc.)
   let enabledPublishTargets = [];
   const currentUserId = req.authentication?.user?.id ?? currentUser?.id ?? userId;
+  // #region agent log
+  fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'72392a'},body:JSON.stringify({sessionId:'72392a',location:'recall/routes/meetings/detail.js:beforePublishTarget',message:'before PublishTarget query',data:{currentUserId:!!currentUserId,hasPublishTargetModel:!!db.PublishTarget},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
   if (currentUserId && db.PublishTarget) {
     try {
       const targets = await db.PublishTarget.findAll({
@@ -584,7 +597,12 @@ export default async (req, res) => {
       console.warn("[meetings/detail] PublishTarget lookup failed:", err?.message || err);
     }
   }
-
+  // #region agent log
+  fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'72392a'},body:JSON.stringify({sessionId:'72392a',location:'recall/routes/meetings/detail.js:afterPublishTarget',message:'after PublishTarget',data:{enabledPublishTargetsLength:enabledPublishTargets.length},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+  // #region agent log
+  fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'72392a'},body:JSON.stringify({sessionId:'72392a',location:'recall/routes/meetings/detail.js:beforeRender',message:'about to res.render meeting-detail',data:{},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+  // #endregion
   return res.render("meeting-detail.ejs", {
     notice: req.notice,
     user: req.authentication.user,
@@ -592,5 +610,11 @@ export default async (req, res) => {
     publishDeliveries,
     enabledPublishTargets: Array.isArray(enabledPublishTargets) ? enabledPublishTargets : [],
   });
+  } catch (err) {
+    // #region agent log
+    fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'72392a'},body:JSON.stringify({sessionId:'72392a',location:'recall/routes/meetings/detail.js:catch',message:'meeting detail handler error',data:{errorMessage:err?.message,errorName:err?.name,stackSnippet:(err?.stack||'').split('\n').slice(0,5).join(' | ')},timestamp:Date.now(),hypothesisId:'error'})}).catch(()=>{});
+    // #endregion
+    throw err;
+  }
 };
 
