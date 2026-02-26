@@ -3,6 +3,10 @@
 .env.local
 .env.*.local
 
+# Local database
+*.sqlite
+recall/db.sqlite
+
 # Dependencies
 node_modules/
 */node_modules/

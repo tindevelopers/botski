@@ -17,6 +17,7 @@ import calendarRefresh from "./calendar/refresh.js";
 import calendarEventSetManualRecord from "./calendar-event/set-manual-record.js";
 import oauthCallbackGoogleCalendar from "./oauth-callback/google-calendar.js";
 import oauthCallbackMicrosoftOutlook from "./oauth-callback/microsoft-outlook.js";
+import microsoftOutlookRecording from "./oauth/microsoft-outlook-recording.js";
 import notionConnect from "./oauth/notion-connect.js";
 import oauthCallbackNotion from "./oauth-callback/notion.js";
 import webhooksRecallCalendarUpdates from "./webhooks/recall-calendar-updates.js";
@@ -128,6 +129,7 @@ router.patch("/calendar-event/:id/set-manual-record", calendarEventSetManualReco
 
 router.get("/oauth-callback/google-calendar", oauthCallbackGoogleCalendar);
 router.get("/oauth-callback/microsoft-outlook", oauthCallbackMicrosoftOutlook);
+router.get("/oauth/microsoft-outlook-recording", microsoftOutlookRecording);
 router.get("/oauth/notion", notionConnect);
 router.get("/oauth-callback/notion", oauthCallbackNotion);
 router.get("/oauth/slack", slackConnect);

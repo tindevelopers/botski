@@ -89,6 +89,82 @@ export default async (req, res) => {
       return res.redirect("/");
     }
 
+    // Teams recording & transcript: upgrade existing calendar with recording scopes (admin consent may be required)
+    if (intent === "recording" && userId && calendarId) {
+      const oauthTokens =
+        await fetchTokensFromAuthorizationCodeForMicrosoftOutlook(req.query.code);
+      if (oauthTokens.error) {
+        res.cookie(
+          "notice",
+          JSON.stringify(
+            generateNotice(
+              "error",
+              `Could not enable Teams recording: ${oauthTokens.error_description || oauthTokens.error}. Your organization may require an admin to approve this app.`
+            )
+          )
+        );
+        return res.redirect("/settings");
+      }
+
+      const localCalendar = await db.Calendar.findOne({
+        where: { id: calendarId, userId, platform: "microsoft_outlook" },
+      });
+      if (!localCalendar || !localCalendar.recallId) {
+        res.cookie(
+          "notice",
+          JSON.stringify(
+            generateNotice("error", "Calendar not found. Please connect Outlook first.")
+          )
+        );
+        return res.redirect("/settings");
+      }
+
+      try {
+        await Recall.updateCalendar({
+          id: localCalendar.recallId,
+          data: {
+            platform: "microsoft_outlook",
+            oauth_refresh_token: oauthTokens.refresh_token,
+            oauth_client_id: process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_ID,
+            oauth_client_secret:
+              process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_SECRET,
+            webhook_url: `${process.env.PUBLIC_URL}/webhooks/recall-calendar-updates`,
+          },
+        });
+      } catch (err) {
+        console.error("[ERROR] Failed to update Recall calendar with recording tokens:", err?.message || err);
+        res.cookie(
+          "notice",
+          JSON.stringify(
+            generateNotice(
+              "error",
+              "Failed to save recording permissions. Please try again."
+            )
+          )
+        );
+        return res.redirect("/settings");
+      }
+
+      const updatedRecallData = {
+        ...(localCalendar.recallData || {}),
+        oauth_refresh_token: oauthTokens.refresh_token,
+        teamsRecordingConsent: true,
+      };
+      localCalendar.recallData = updatedRecallData;
+      await localCalendar.save();
+
+      res.cookie(
+        "notice",
+        JSON.stringify(
+          generateNotice(
+            "success",
+            "Teams recording and transcript access enabled. You can now use Teams meeting recordings and transcripts."
+          )
+        )
+      );
+      return res.redirect(`/settings?calendarId=${calendarId}`);
+    }
+
     // Calendar connection flow (existing user)
     if (!userId) {
       // #region agent log
