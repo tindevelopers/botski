@@ -8,6 +8,9 @@ import Recall from "../../services/recall/index.js";
 import db from "../../db.js";
 
 export default async (req, res) => {
+  // #region agent log
+  fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'oauth-callback/microsoft-outlook.js:entry',message:'ms_oauth_callback_entry',data:{host:req.headers.host,hasCode:!!req.query.code,stateRaw:typeof req.query.state,publicUrl:process.env.PUBLIC_URL||'(not set)'},timestamp:Date.now(),runId:'ms-oauth',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
   if (
     req.headers.host.indexOf("localhost") === -1 &&
     process.env.NODE_ENV === "development"
@@ -27,11 +30,17 @@ export default async (req, res) => {
     const { intent } = state;
     const userId = state.userId;
     let calendarId = state.calendarId;
+    // #region agent log
+    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'oauth-callback/microsoft-outlook.js:state_parsed',message:'ms_oauth_state_parsed',data:{intent,intentIsSignin:intent==='signin',hasUserId:!!userId},timestamp:Date.now(),runId:'ms-oauth',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
 
     // Sign-in / sign-up with Microsoft (no existing user)
     if (intent === "signin") {
       const oauthTokens =
         await fetchTokensFromAuthorizationCodeForMicrosoftOutlook(req.query.code);
+      // #region agent log
+      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'oauth-callback/microsoft-outlook.js:signin_token_exchange',message:'ms_oauth_signin_tokens',data:{hasError:!!oauthTokens.error,errorDesc:oauthTokens.error_description||null},timestamp:Date.now(),runId:'ms-oauth',hypothesisId:'H2'})}).catch(()=>{});
+      // #endregion
       if (oauthTokens.error) {
         res.cookie(
           "notice",
@@ -45,6 +54,9 @@ export default async (req, res) => {
         return res.redirect("/sign-in");
       }
       const profile = await fetchMicrosoftUserProfile(oauthTokens.access_token);
+      // #region agent log
+      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'oauth-callback/microsoft-outlook.js:signin_profile',message:'ms_oauth_signin_profile',data:{hasEmail:!!profile?.email},timestamp:Date.now(),runId:'ms-oauth',hypothesisId:'H3'})}).catch(()=>{});
+      // #endregion
       if (!profile.email) {
         res.cookie(
           "notice",
@@ -71,11 +83,17 @@ export default async (req, res) => {
         "notice",
         JSON.stringify(generateNotice("success", "Signed in with Microsoft."))
       );
+      // #region agent log
+      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'oauth-callback/microsoft-outlook.js:signin_redirect',message:'ms_oauth_signin_redirect_to_home',data:{userId:user?.id,host:req.headers.host},timestamp:Date.now(),runId:'ms-oauth',hypothesisId:'H4'})}).catch(()=>{});
+      // #endregion
       return res.redirect("/");
     }
 
     // Calendar connection flow (existing user)
     if (!userId) {
+      // #region agent log
+      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'oauth-callback/microsoft-outlook.js:calendar_no_userId',message:'ms_oauth_calendar_no_user_id',data:{},timestamp:Date.now(),runId:'ms-oauth',hypothesisId:'H1'})}).catch(()=>{});
+      // #endregion
       res.cookie(
         "notice",
         JSON.stringify(generateNotice("error", "Invalid Microsoft OAuth state. Please try connecting again from Settings."))
@@ -90,6 +108,9 @@ export default async (req, res) => {
       await fetchTokensFromAuthorizationCodeForMicrosoftOutlook(req.query.code);
 
     if (oauthTokens.error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'oauth-callback/microsoft-outlook.js:calendar_token_error',message:'ms_oauth_calendar_tokens_error',data:{error:oauthTokens.error},timestamp:Date.now(),runId:'ms-oauth',hypothesisId:'H2'})}).catch(()=>{});
+      // #endregion
       res.cookie(
         "notice",
         JSON.stringify(
@@ -289,6 +310,9 @@ export default async (req, res) => {
 
     return res.redirect("/");
   } catch (err) {
+    // #region agent log
+    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'oauth-callback/microsoft-outlook.js:catch',message:'ms_oauth_callback_exception',data:{errMessage:err?.message},timestamp:Date.now(),runId:'ms-oauth',hypothesisId:'H5'})}).catch(()=>{});
+    // #endregion
     console.error(
       `[ERROR] Failed to handle oauth callback from Microsoft calendar:`,
       err.message || err

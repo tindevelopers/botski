@@ -310,17 +310,19 @@ setTimeout(async () => {
   }
 }, 3000);
 
+// Rate-limit queue error logging to avoid flooding (e.g. WRONGPASS retries) and Railway rate limits
+let lastQueueErrorLog = 0;
+const QUEUE_ERROR_LOG_INTERVAL_MS = 60_000;
+
 backgroundQueue.on("error", (error) => {
-  console.error("❌ Queue error:", error);
-  
-  // #region agent log
-  fetch('http://127.0.0.1:7250/ingest/bf0206c3-6e13-4499-92a3-7fb2b7527fcf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/index.js:redis_error',message:'Redis connection error - periodic sync cannot run',data:{errorMessage:error.message,errorCode:error.code,isConnectionRefused:error.code==='ECONNREFUSED'},timestamp:Date.now(),sessionId:'debug-session',runId:'worker-start',hypothesisId:'C'})}).catch(()=>{});
-  // #endregion
-  
+  const now = Date.now();
+  if (now - lastQueueErrorLog < QUEUE_ERROR_LOG_INTERVAL_MS) return;
+  lastQueueErrorLog = now;
+
+  console.error("❌ Queue error:", error.message);
   telemetryLog("ERROR", "Queue error", {
     error: error.message,
     code: error.code,
-    stack: error.stack,
   });
 });
 

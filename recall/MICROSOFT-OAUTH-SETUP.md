@@ -66,12 +66,33 @@ No Microsoft “app approval” or AppSource submission is required for internal
 3. Select **Microsoft Graph**
 4. Select **Delegated permissions**
 5. Add these **Delegated** permissions:
+   - `User.Read` (sign-in and read profile; **required for Graph `/me`** — fixes "Insufficient privileges" on OAuth callback)
    - `offline_access` (refresh tokens)
    - `Calendars.Read` (calendar events)
    - `openid`, `email` (authentication)
    - `OnlineMeetings.Read`, `OnlineMeetingTranscript.Read.All`, `OnlineMeetingRecording.Read.All` (Teams meetings/recordings/transcripts, if used)
 6. Click **Add permissions**
 7. Click **Grant admin consent for &lt;Your org&gt;** so internal users don’t need to consent individually
+
+### Add permissions via Azure CLI
+
+To add all required Microsoft Graph delegated permissions in one go (requires [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) and `az login`):
+
+```bash
+# Replace with your app's Application (client) ID
+export AZURE_APP_ID="your-client-id"
+
+# From the repo root
+./recall/scripts/azure-add-ms-graph-permissions.sh
+```
+
+Then grant admin consent (required for some permissions):
+
+```bash
+az ad app permission admin-consent --id "$AZURE_APP_ID"
+```
+
+Or in Azure Portal: **App registrations** → your app → **API permissions** → **Grant admin consent for &lt;Your org&gt;**.
 
 ## Step 4: Set Environment Variables in Railway
 
@@ -106,6 +127,16 @@ Railway should automatically redeploy when you set environment variables. If not
 ```bash
 railway up
 ```
+
+## Staging vs production (different domains)
+
+If **staging** is at `https://meeting-assistant-v1-staging.up.railway.app` and **production** at `https://meeting.tin.info`, set `PUBLIC_URL` **per environment** so OAuth redirects and cookies use the correct domain (users stay on the same site after sign-in).
+
+1. **Staging Railway service**: set `PUBLIC_URL=https://meeting-assistant-v1-staging.up.railway.app` (no trailing slash).
+2. **Production service**: set `PUBLIC_URL=https://meeting.tin.info`.
+3. **Azure**: In the same app, under **Authentication** → **Web** → **Redirect URIs**, add **both**:
+   - `https://meeting.tin.info/oauth-callback/microsoft-outlook`
+   - `https://meeting-assistant-v1-staging.up.railway.app/oauth-callback/microsoft-outlook`
 
 ## Troubleshooting
 

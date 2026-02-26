@@ -20,11 +20,16 @@ function buildGoogleOAuthScopes() {
 }
 
 export function buildMicrosoftOutlookOAuthUrl(state) {
+  const scopes = buildMicrosoftOutlookOAuthScopes();
+  const scopeStr = scopes.join(" ");
+  // #region agent log
+  fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'logic/oauth.js:buildMicrosoftOutlookOAuthUrl',message:'ms_oauth_scopes_requested',data:{scopes,hasUserRead:scopes.includes('User.Read')||scopes.some(s=>s.includes('User.Read')),scopeStr},timestamp:Date.now(),runId:'ms-graph-403',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
   const params = {
     client_id: process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_ID,
     redirect_uri: process.env.PUBLIC_URL + "/oauth-callback/microsoft-outlook",
     response_type: "code",
-    scope: buildMicrosoftOutlookOAuthScopes().join(" "),
+    scope: scopeStr,
     prompt: "consent", // Force re-authorization to ensure fresh OAuth flow
     state: JSON.stringify(state),
   };
@@ -39,13 +44,14 @@ export function buildMicrosoftOutlookOAuthUrl(state) {
 
 function buildMicrosoftOutlookOAuthScopes() {
   const baseCalendarScopes = [
-    "offline_access", 
+    "offline_access",
+    "User.Read", // required for Graph /me (sign-in profile)
     "https://graph.microsoft.com/Calendars.Read",
     // Teams meeting permissions - needed to find meetings by joinWebUrl
     "OnlineMeetings.Read",
     // Teams recording and transcript permissions
     "OnlineMeetingTranscript.Read.All",
-    "OnlineMeetingRecording.Read.All"
+    "OnlineMeetingRecording.Read.All",
   ];
   return process.env.REQUEST_ONLY_CALENDAR_SCOPES ? baseCalendarScopes : [...baseCalendarScopes, "openid", "email"];
 }
@@ -119,11 +125,17 @@ export async function refreshMicrosoftOutlookToken(refreshToken) {
  * @returns {Promise<{ email: string, name: string }>}
  */
 export async function fetchMicrosoftUserProfile(accessToken) {
+  // #region agent log
+  fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'logic/oauth.js:fetchMicrosoftUserProfile',message:'graph_me_before',data:{tokenLength:accessToken?.length,hasToken:!!accessToken},timestamp:Date.now(),runId:'ms-graph-403',hypothesisId:'H2'})}).catch(()=>{});
+  // #endregion
   const response = await fetch("https://graph.microsoft.com/v1.0/me", {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!response.ok) {
     const text = await response.text();
+    // #region agent log
+    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'logic/oauth.js:fetchMicrosoftUserProfile',message:'graph_me_error',data:{status:response.status,bodyPreview:(text||'').slice(0,300)},timestamp:Date.now(),runId:'ms-graph-403',hypothesisId:'H4'})}).catch(()=>{});
+    // #endregion
     throw new Error(`Microsoft Graph /me failed: ${response.status} ${text}`);
   }
   const data = await response.json();
