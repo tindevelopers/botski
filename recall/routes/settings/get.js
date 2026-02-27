@@ -77,9 +77,10 @@ export default async (req, res) => {
     });
   }
 
-  // Publishing targets
+  // Publishing targets (order by updatedAt so we show the latest if there were ever duplicates)
   const publishTargets = await db.PublishTarget.findAll({
     where: { userId },
+    order: [["updatedAt", "DESC"]],
   });
   const slackTarget = publishTargets.find((t) => t.type === "slack") || null;
   const teamworkTarget = publishTargets.find((t) => t.type === "teamwork") || null;

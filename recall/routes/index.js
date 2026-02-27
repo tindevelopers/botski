@@ -60,6 +60,7 @@ import {
 import refreshRecording from "./api/refresh-recording.js";
 import getRecording from "./api/get-recording.js";
 import publishMeeting from "./api/publish-meeting.js";
+import publishTeamwork from "./api/publish-teamwork.js";
 import { listDestinations as apiNotionDestinations, publishToNotionDestination } from "./api/notion-destinations.js";
 import settingsGet from "./settings/get.js";
 import profileUpdate from "./profile/update.js";
@@ -182,6 +183,7 @@ router.get("/api/meetings/:meetingId/export", exportMeeting);
 router.get("/api/meetings/:meetingId/recording", getRecording);
 router.post("/api/meetings/:meetingId/refresh-recording", refreshRecording);
 router.post("/api/meetings/:meetingId/publish", publishMeeting);
+router.post("/api/meetings/:meetingId/publish/teamwork", publishTeamwork);
 router.get("/api/notion/destinations", apiNotionDestinations);
 router.post("/api/meetings/:meetingId/publish/notion", publishToNotionDestination);
 

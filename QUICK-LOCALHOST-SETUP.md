@@ -15,9 +15,9 @@ The DATABASE_URL will be split across multiple lines. Combine them into one line
 postgresql://postgres:password@hostname:port/database
 ```
 
-Example format:
+Example format (use your own values from Railway):
 ```
-postgresql://postgres:JkuCmXKLocLLrLRcgyTUXNbdnpFGcPYv@caboose.proxy.rlwy.net:55829/railway
+postgresql://postgres:YOUR_PASSWORD@YOUR_HOST.proxy.rlwy.net:PORT/railway
 ```
 
 ## Step 2: Create .env File

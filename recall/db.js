@@ -37,10 +37,11 @@ function initializeDatabase() {
   console.log(`   Host: ${url.hostname}, Database: ${url.pathname.substring(1)}`);
 
   // Enable SSL for Railway PostgreSQL (hostnames contain railway.app or proxy.rlwy.net)
-  // Also enable SSL in production environments
+  // Also enable SSL in production environments. Explicit sslmode=disable in URL overrides.
+  const sslDisabledInUrl = url.searchParams.get('sslmode') === 'disable';
   const isRailwayDatabase = url.hostname.includes('railway.app') || url.hostname.includes('proxy.rlwy.net');
-  const shouldUseSSL = process.env.NODE_ENV === "production" || isRailwayDatabase;
-  
+  const shouldUseSSL = !sslDisabledInUrl && (process.env.NODE_ENV === "production" || isRailwayDatabase);
+
   sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: "postgres",
     logging: false,

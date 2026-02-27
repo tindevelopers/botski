@@ -63,6 +63,13 @@
               </button>
               <button
                 type="button"
+                onclick="publishToTeamwork('<%= meeting.artifactId %>', this)"
+                class="w-full inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-emerald-600 shadow-sm ring-1 ring-inset ring-emerald-200 hover:bg-emerald-50"
+              >
+                Push to Teamwork
+              </button>
+              <button
+                type="button"
                 onclick="publishToNotion('<%= meeting.artifactId %>', this)"
                 class="w-full inline-flex items-center justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
               >

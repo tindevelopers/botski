@@ -1413,6 +1413,48 @@
     }
   }
 
+  async function publishToTeamwork(artifactId, buttonEl) {
+    const btn = buttonEl || document.querySelector('[onclick*="publishToTeamwork"]');
+    const originalText = btn ? btn.textContent : 'Push to Teamwork';
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add('opacity-75', 'cursor-not-allowed');
+      btn.textContent = 'Pushing…';
+    }
+    const timeoutMs = 15000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(`/api/meetings/${artifactId}/publish/teamwork`, { method: 'POST', signal: controller.signal });
+      clearTimeout(timeoutId);
+      const contentType = response.headers.get('content-type') || '';
+      let result = {};
+      if (contentType.includes('application/json')) {
+        result = await response.json();
+      } else if (!response.ok) {
+        const text = await response.text();
+        throw new Error(response.status === 404 ? 'Publish to Teamwork is not available. Restart the server and try again.' : (text || `Request failed (${response.status})`));
+      }
+      if (response.ok && result.success) {
+        showNotification('Publishing to Teamwork… Tasks will appear in your project shortly.', 'info');
+        if (btn) btn.textContent = 'Pushed';
+      } else {
+        throw new Error(result.message || result.error || 'Failed to publish to Teamwork');
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      const msg = err.name === 'AbortError' ? 'Request timed out. Check that the server and worker are running.' : (err.message || 'Failed to publish to Teamwork');
+      showNotification(msg, 'error');
+      if (btn) btn.textContent = originalText;
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-75', 'cursor-not-allowed');
+        if (btn.textContent === 'Pushed') setTimeout(() => (btn.textContent = originalText), 3000);
+      }
+    }
+  }
+
   // Media toggle functionality
   function toggleMedia(mediaType) {
     const videoContainer = document.getElementById('video-player-container');

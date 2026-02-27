@@ -39,6 +39,13 @@
         >
           Publish to Slack
         </button>
+        <button
+          type="button"
+          onclick="publishToTeamwork('<%= meeting.artifactId %>', this)"
+          class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-emerald-600 shadow-sm ring-1 ring-inset ring-emerald-200 hover:bg-emerald-50"
+        >
+          Push to Teamwork
+        </button>
       <% } %>
       <button
         type="button"

@@ -1230,6 +1230,7 @@ async function openActionsModal(meetingId, summaryId, title) {
   const titleEl = document.getElementById('actions-modal-title');
   const content = document.getElementById('actions-modal-content');
   
+  modal.setAttribute('data-actions-meeting-id', meetingId || '');
   titleEl.textContent = title + ' - Action Items';
   content.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div><span class="ml-3 text-gray-500">Loading action items...</span></div>';
   modal.classList.remove('hidden');
@@ -1284,7 +1285,16 @@ async function openActionsModal(meetingId, summaryId, title) {
     if (response.ok) {
       const data = await response.json();
       if (data.actionItems && data.actionItems.length > 0) {
+        const escapedId = (meetingId || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         content.innerHTML = `
+          <div id="actions-modal-teamwork-status" class="mb-3 text-sm hidden"></div>
+          <button
+            type="button"
+            onclick="publishToTeamworkFromModal()"
+            class="w-full inline-flex items-center justify-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 mb-4"
+          >
+            Push to Teamwork
+          </button>
           <ul class="space-y-3 max-h-96 overflow-y-auto">
             ${data.actionItems.map((item, index) => `
               <li class="flex items-start space-x-3 p-3 bg-amber-50 rounded-lg">
@@ -1306,6 +1316,44 @@ async function openActionsModal(meetingId, summaryId, title) {
     }
   } catch (error) {
     content.innerHTML = '<p class="text-red-500 text-center py-8">Failed to load action items</p>';
+  }
+}
+
+async function publishToTeamworkFromModal() {
+  const modal = document.getElementById('actions-modal');
+  const meetingId = modal?.getAttribute('data-actions-meeting-id');
+  const statusEl = document.getElementById('actions-modal-teamwork-status');
+  if (!meetingId) return;
+  if (statusEl) {
+    statusEl.classList.remove('hidden');
+    statusEl.textContent = 'Pushing to Teamwork…';
+    statusEl.className = 'mb-3 text-sm text-gray-600';
+  }
+  try {
+    const response = await fetch(`/api/meetings/${meetingId}/publish/teamwork`, { method: 'POST' });
+    const contentType = response.headers.get('content-type') || '';
+    let result = {};
+    if (contentType.includes('application/json')) {
+      result = await response.json();
+    } else if (!response.ok && statusEl) {
+      statusEl.textContent = response.status === 404 ? 'Publish to Teamwork is not available. Restart the server and try again.' : 'Request failed (' + response.status + ').';
+      statusEl.className = 'mb-3 text-sm text-red-600';
+      return;
+    }
+    if (statusEl) {
+      if (response.ok && result.success) {
+        statusEl.textContent = 'Publishing to Teamwork… Tasks will appear in your project shortly.';
+        statusEl.className = 'mb-3 text-sm text-emerald-600';
+      } else {
+        statusEl.textContent = result.message || result.error || 'Failed to publish to Teamwork';
+        statusEl.className = 'mb-3 text-sm text-red-600';
+      }
+    }
+  } catch (err) {
+    if (statusEl) {
+      statusEl.textContent = err.message || 'Failed to publish to Teamwork';
+      statusEl.className = 'mb-3 text-sm text-red-600';
+    }
   }
 }
 

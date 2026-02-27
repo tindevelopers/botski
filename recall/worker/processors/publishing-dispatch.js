@@ -3,24 +3,9 @@ import { getPublisher } from "../../publishing/publisher-registry.js";
 import { v4 as uuidv4 } from "uuid";
 
 export default async (job) => {
-  const { meetingSummaryId, notionOverride, slackOverride } = job.data;
+  const { meetingSummaryId, notionOverride, slackOverride, teamworkOverride } = job.data;
   console.log(`[PUBLISHING] Starting publishing dispatch for meetingSummary ${meetingSummaryId}`);
-  
-  if (notionOverride) {
-    console.log(`[PUBLISHING] Notion override provided:`, {
-      destinationId: notionOverride.destinationId?.substring(0, 8) + "...",
-      destinationType: notionOverride.destinationType,
-      createNewPage: notionOverride.createNewPage,
-      titleTemplate: notionOverride.titleTemplate ? `${notionOverride.titleTemplate.substring(0,30)}...` : null,
-    });
-  }
 
-  if (slackOverride) {
-    await publishToSlackWithOverride(meetingSummary, userId, slackOverride);
-    console.log(`[PUBLISHING] Completed Slack-only publishing dispatch for meetingSummary ${meetingSummaryId}`);
-    return;
-  }
-  
   const meetingSummary = await db.MeetingSummary.findByPk(meetingSummaryId, {
     include: [{ model: db.MeetingArtifact }],
   });
@@ -40,10 +25,27 @@ export default async (job) => {
     return;
   }
 
-  // If notionOverride is provided, only publish to Notion with the override
   if (notionOverride) {
+    console.log(`[PUBLISHING] Notion override provided:`, {
+      destinationId: notionOverride.destinationId?.substring(0, 8) + "...",
+      destinationType: notionOverride.destinationType,
+      createNewPage: notionOverride.createNewPage,
+      titleTemplate: notionOverride.titleTemplate ? `${notionOverride.titleTemplate.substring(0,30)}...` : null,
+    });
     await publishToNotionWithOverride(meetingSummary, userId, notionOverride);
     console.log(`[PUBLISHING] Completed Notion-only publishing dispatch for meetingSummary ${meetingSummaryId}`);
+    return;
+  }
+
+  if (slackOverride) {
+    await publishToSlackWithOverride(meetingSummary, userId, slackOverride);
+    console.log(`[PUBLISHING] Completed Slack-only publishing dispatch for meetingSummary ${meetingSummaryId}`);
+    return;
+  }
+
+  if (teamworkOverride) {
+    await publishToTeamworkWithOverride(meetingSummary, userId);
+    console.log(`[PUBLISHING] Completed Teamwork-only publishing dispatch for meetingSummary ${meetingSummaryId}`);
     return;
   }
 
@@ -248,6 +250,72 @@ async function publishToSlackWithOverride(meetingSummary, userId, slackOverride)
     });
   } catch (err) {
     console.error(`[ERROR] Failed publishing to Slack (override):`, err);
+    throw err;
+  }
+}
+
+/**
+ * Publish to Teamwork using the user's enabled Teamwork target (no OAuth; config only).
+ */
+async function publishToTeamworkWithOverride(meetingSummary, userId) {
+  const publisher = await getPublisher("teamwork");
+  if (!publisher) {
+    console.error(`[PUBLISHING] No Teamwork publisher found`);
+    return;
+  }
+
+  const target = await db.PublishTarget.findOne({
+    where: { userId, type: "teamwork", enabled: true },
+  });
+
+  if (!target?.config?.baseUrl || !target?.config?.apiKey) {
+    throw new Error("Teamwork target not configured or disabled");
+  }
+
+  // Teamwork uses target config only; base publisher expects integration so pass a placeholder
+  const integration = { id: "teamwork-config", provider: "teamwork" };
+
+  console.log(`[PUBLISHING] Publishing to Teamwork (target ${target.id})`);
+
+  try {
+    const result = await publisher.publish({
+      meetingSummary,
+      target,
+      integration,
+    });
+
+    console.log(`[PUBLISHING] Successfully published to Teamwork. Result:`, {
+      externalId: result?.externalId,
+      url: result?.url,
+    });
+
+    let delivery = await db.PublishDelivery.findOne({
+      where: {
+        meetingSummaryId: meetingSummary.id,
+        publishTargetId: target.id,
+      },
+    });
+    if (!delivery) {
+      delivery = await db.PublishDelivery.create({
+        id: uuidv4(),
+        meetingSummaryId: meetingSummary.id,
+        publishTargetId: target.id,
+        status: "success",
+        attempts: 1,
+        externalId: result?.externalId || null,
+        url: result?.url || null,
+      });
+    } else {
+      await delivery.update({
+        status: "success",
+        attempts: delivery.attempts + 1,
+        externalId: result?.externalId || null,
+        url: result?.url || null,
+        lastError: null,
+      });
+    }
+  } catch (err) {
+    console.error(`[ERROR] Failed publishing to Teamwork:`, err);
     throw err;
   }
 }
