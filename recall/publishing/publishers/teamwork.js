@@ -2,6 +2,25 @@ import { BasePublisher } from "../base-publisher.js";
 import { normalizeMeetingData } from "../data-transformer.js";
 import { createTask, createMilestone } from "../../services/teamwork/api-client.js";
 
+const CONTENT_KEYS = ["task", "action", "content", "description", "text", "summary", "title", "name"];
+function getActionItemContent(item) {
+  if (item == null) return "Action item";
+  if (typeof item === "string") return item.trim() || "Action item";
+  if (typeof item !== "object") return "Action item";
+  for (const key of CONTENT_KEYS) {
+    const val = item[key];
+    if (val != null && typeof val === "string" && val.trim()) return val.trim();
+  }
+  // Fallback: use longest string value in object (skip assignee/dates)
+  const skipKeys = new Set(["assignee", "due_date", "dueDate", "timestamp_seconds", "owner", "assignedTo"]);
+  let best = "";
+  for (const [k, v] of Object.entries(item)) {
+    if (skipKeys.has(k)) continue;
+    if (v != null && typeof v === "string" && v.trim().length > best.length) best = v.trim();
+  }
+  return best || "Action item";
+}
+
 class TeamworkPublisher extends BasePublisher {
   constructor() {
     super({ name: "teamwork" });
@@ -58,9 +77,7 @@ class TeamworkPublisher extends BasePublisher {
     const createItems = [...(payload.actionItems || []), ...(payload.followUps || [])];
     if (createItems.length) {
       for (const item of createItems) {
-        const content = typeof item === "string"
-          ? item
-          : (item.task || item.action || item.content || item.description || item.text || item.summary || item.title || "Action item");
+        const content = getActionItemContent(item);
         const desc = descriptionParts.join("\n\n");
         const task = await createTask({
           baseUrl,
