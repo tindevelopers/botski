@@ -14,6 +14,9 @@ class TeamworkPublisher extends BasePublisher {
     if (!config?.apiKey) {
       throw new Error("Teamwork apiKey is required");
     }
+    if (!config?.tasklistId) {
+      throw new Error("Teamwork tasklistId (Task List ID) is required for creating tasks");
+    }
   }
 
   async transformData(meetingSummary) {

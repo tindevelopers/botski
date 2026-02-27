@@ -26,6 +26,13 @@ export default async (req, res) => {
       });
     }
 
+    if (!teamworkTarget?.config?.tasklistId) {
+      return res.status(400).json({
+        error: "Teamwork Task List required",
+        message: "Set a Task List ID in Settings > Publishing > Teamwork. Tasks are created in that list.",
+      });
+    }
+
     const artifact = await db.MeetingArtifact.findOne({
       where: {
         userId,

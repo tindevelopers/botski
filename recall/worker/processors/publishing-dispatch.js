@@ -271,6 +271,9 @@ async function publishToTeamworkWithOverride(meetingSummary, userId) {
   if (!target?.config?.baseUrl || !target?.config?.apiKey) {
     throw new Error("Teamwork target not configured or disabled");
   }
+  if (!target?.config?.tasklistId) {
+    throw new Error("Teamwork Task List ID is required. Set it in Settings > Publishing > Teamwork.");
+  }
 
   // Teamwork uses target config only; base publisher expects integration so pass a placeholder
   const integration = { id: "teamwork-config", provider: "teamwork" };

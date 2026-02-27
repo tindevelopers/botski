@@ -1051,20 +1051,21 @@
   const MAX_PROCESSING_TIME_MS = 120000; // 2 minutes
   let lastSuperAgentStatus = null; // Track last status to detect completion
   let notificationPermissionRequested = false; // Track if we've asked for permission
-  
+  const ENABLE_LOCAL_TELEMETRY = <%- (typeof enableLocalTelemetry !== 'undefined' && enableLocalTelemetry) ? 'true' : 'false' %>;
+
   function scheduleSuperAgentPoll() {
     if (superAgentPollTimer) {
       clearTimeout(superAgentPollTimer);
     }
     superAgentPollTimer = setTimeout(async () => {
       // #region agent log
-      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1057',message:'Poll timer fired',data:{isHidden:document.hidden,lastStatus:lastSuperAgentStatus},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+      if (ENABLE_LOCAL_TELEMETRY) { fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1057',message:'Poll timer fired',data:{isHidden:document.hidden,lastStatus:lastSuperAgentStatus},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{}); }
       // #endregion
       
       const analysis = await fetchSuperAgentAnalysis();
       if (analysis) {
         // #region agent log
-        fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1059',message:'Fetched analysis',data:{currentStatus:analysis.status,lastStatus:lastSuperAgentStatus,isHidden:document.hidden},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+        if (ENABLE_LOCAL_TELEMETRY) { fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1059',message:'Fetched analysis',data:{currentStatus:analysis.status,lastStatus:lastSuperAgentStatus,isHidden:document.hidden},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{}); }
         // #endregion
         
         // Check if analysis just completed (status changed from processing/queued to completed)
@@ -1074,7 +1075,7 @@
         
         if (justCompleted) {
           // #region agent log
-          fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1070',message:'Analysis just completed',data:{isHidden:document.hidden,willShowNotification:document.hidden},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+          if (ENABLE_LOCAL_TELEMETRY) { fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1070',message:'Analysis just completed',data:{isHidden:document.hidden,willShowNotification:document.hidden},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{}); }
           // #endregion
           
           console.log('[Super Agent] Analysis completed - showing notification');
@@ -1098,13 +1099,13 @@
             await retrySuperAgentAnalysis(true); // true = isAutoRetry
           } else {
             // #region agent log
-            fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1095',message:'Scheduling next poll',data:{status:analysis.status,isHidden:document.hidden},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+            if (ENABLE_LOCAL_TELEMETRY) { fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1095',message:'Scheduling next poll',data:{status:analysis.status,isHidden:document.hidden},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{}); }
             // #endregion
             scheduleSuperAgentPoll();
           }
         } else {
           // #region agent log
-          fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1101',message:'Analysis finished, stopping poll',data:{status:analysis.status},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
+          if (ENABLE_LOCAL_TELEMETRY) { fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1101',message:'Analysis finished, stopping poll',data:{status:analysis.status},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{}); }
           // #endregion
           // Reset timer when not processing
           processingStartTime = null;
@@ -1141,7 +1142,7 @@
   // Show browser notification when analysis completes
   function showSuperAgentCompletionNotification() {
     // #region agent log
-    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1120',message:'showSuperAgentCompletionNotification called',data:{hasNotificationAPI:('Notification' in window),permission:('Notification' in window)?Notification.permission:'N/A',isHidden:document.hidden},timestamp:Date.now(),hypothesisId:'H6'})}).catch(()=>{});
+    if (ENABLE_LOCAL_TELEMETRY) { fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1120',message:'showSuperAgentCompletionNotification called',data:{hasNotificationAPI:('Notification' in window),permission:('Notification' in window)?Notification.permission:'N/A',isHidden:document.hidden},timestamp:Date.now(),hypothesisId:'H6'})}).catch(()=>{}); }
     // #endregion
     
     if (!('Notification' in window)) return;
@@ -1155,7 +1156,7 @@
     
     try {
       // #region agent log
-      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1135',message:'Creating browser notification',data:{isHidden:document.hidden},timestamp:Date.now(),hypothesisId:'H7'})}).catch(()=>{});
+      if (ENABLE_LOCAL_TELEMETRY) { fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1135',message:'Creating browser notification',data:{isHidden:document.hidden},timestamp:Date.now(),hypothesisId:'H7'})}).catch(()=>{}); }
       // #endregion
       
       const notification = new Notification('Super Agent Analysis Complete', {
@@ -1181,7 +1182,7 @@
   // Page Visibility API: poll immediately when user returns to tab
   document.addEventListener('visibilitychange', async () => {
     // #region agent log
-    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1160',message:'Visibility changed',data:{isHidden:document.hidden,lastStatus:lastSuperAgentStatus},timestamp:Date.now(),hypothesisId:'H8'})}).catch(()=>{});
+    if (ENABLE_LOCAL_TELEMETRY) { fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1160',message:'Visibility changed',data:{isHidden:document.hidden,lastStatus:lastSuperAgentStatus},timestamp:Date.now(),hypothesisId:'H8'})}).catch(()=>{}); }
     // #endregion
     
     if (!document.hidden && lastSuperAgentStatus) {
@@ -1190,13 +1191,13 @@
         console.log('[Super Agent] Page became visible, checking analysis status immediately');
         
         // #region agent log
-        fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1170',message:'Page visible with processing status, fetching immediately',data:{lastStatus:lastSuperAgentStatus},timestamp:Date.now(),hypothesisId:'H9'})}).catch(()=>{});
+        if (ENABLE_LOCAL_TELEMETRY) { fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1170',message:'Page visible with processing status, fetching immediately',data:{lastStatus:lastSuperAgentStatus},timestamp:Date.now(),hypothesisId:'H9'})}).catch(()=>{}); }
         // #endregion
         
         const analysis = await fetchSuperAgentAnalysis();
         if (analysis) {
           // #region agent log
-          fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1177',message:'Fetched analysis on visibility change',data:{currentStatus:analysis.status,lastStatus:lastSuperAgentStatus},timestamp:Date.now(),hypothesisId:'H10'})}).catch(()=>{});
+          if (ENABLE_LOCAL_TELEMETRY) { fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'meeting-detail.ejs:1177',message:'Fetched analysis on visibility change',data:{currentStatus:analysis.status,lastStatus:lastSuperAgentStatus},timestamp:Date.now(),hypothesisId:'H10'})}).catch(()=>{}); }
           // #endregion
           
           const justCompleted = 

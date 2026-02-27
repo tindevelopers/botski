@@ -4,12 +4,18 @@ function authHeader(apiKey) {
   return `Basic ${Buffer.from(`${apiKey}:x`).toString("base64")}`;
 }
 
+function normalizeBaseUrl(url) {
+  if (!url) return url;
+  return String(url).replace(/\/+$/, "");
+}
+
 async function teamworkRequest({ baseUrl, apiKey, path, method = "GET", body }) {
   if (!baseUrl || !apiKey) {
     throw new Error("Teamwork baseUrl and apiKey are required");
   }
 
-  const res = await fetch(`${baseUrl}${path}`, {
+  const url = `${normalizeBaseUrl(baseUrl)}${path}`;
+  const res = await fetch(url, {
     method,
     headers: {
       Authorization: authHeader(apiKey),
@@ -41,7 +47,10 @@ export async function listTasklists({ baseUrl, apiKey, projectId }) {
 }
 
 export async function createTask({ baseUrl, apiKey, content, description, tasklistId }) {
-  const path = tasklistId ? `/tasklists/${tasklistId}/tasks.json` : "/tasks.json";
+  if (!tasklistId) {
+    throw new Error("tasklistId is required to create a Teamwork task");
+  }
+  const path = `/tasklists/${tasklistId}/tasks.json`;
   return teamworkRequest({
     baseUrl,
     apiKey,
