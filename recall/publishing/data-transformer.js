@@ -27,6 +27,29 @@ export async function normalizeMeetingData(meetingSummary, options = {}) {
 
   const calendarEvent = artifact?.CalendarEvent;
 
+  // Prefer Super Agent analysis when available (same data as Premium meeting detail)
+  let actionItems = meetingSummary.actionItems || [];
+  let summary = meetingSummary.summary;
+  const analysis = await db.MeetingSuperAgentAnalysis.findOne({
+    where: { meetingArtifactId: meetingSummary.meetingArtifactId, status: "completed" },
+    order: [["updatedAt", "DESC"]],
+  });
+  if (analysis?.actionItems?.length) {
+    actionItems = analysis.actionItems;
+  }
+  if (analysis?.detailedSummary) {
+    summary = analysis.detailedSummary;
+  }
+
+  // Ensure meetingUrl is a string (avoid "[object Object]" in task descriptions)
+  let meetingUrlRaw = calendarEvent?.meetingUrl || artifact?.rawPayload?.data?.meeting_url || null;
+  const meetingUrl =
+    meetingUrlRaw == null
+      ? null
+      : typeof meetingUrlRaw === "string"
+        ? meetingUrlRaw
+        : (meetingUrlRaw?.url || meetingUrlRaw?.href || meetingUrlRaw?.link || null);
+
   // Calculate duration
   const startTime =
     calendarEvent?.startTime || artifact?.rawPayload?.data?.start_time;
@@ -71,16 +94,16 @@ export async function normalizeMeetingData(meetingSummary, options = {}) {
     // Core content
     title:
       calendarEvent?.title ||
-      meetingSummary.summary?.slice(0, 100) ||
+      (summary || meetingSummary.summary)?.slice(0, 100) ||
       "Meeting Notes",
-    summary: meetingSummary.summary,
+    summary: summary,
 
     // 1. Entire transcript
     transcript: transcript,
     transcriptText: transcript.map((t) => `${t.speaker}: ${t.text}`).join("\n"),
 
-    // 2. Actions assigned
-    actionItems: meetingSummary.actionItems || [],
+    // 2. Actions assigned (prefer Super Agent when available)
+    actionItems,
 
     // 3. Follow ups
     followUps: meetingSummary.followUps || [],
@@ -116,10 +139,9 @@ export async function normalizeMeetingData(meetingSummary, options = {}) {
       attendeeCount: formattedAttendees.length,
       attendeeNames: formattedAttendees.map((a) => a.name).join(", "),
 
-      // Meeting platform and URL
+      // Meeting platform and URL (always string to avoid [object Object])
       platform: calendarEvent?.platform || null,
-      meetingUrl:
-        calendarEvent?.meetingUrl || artifact?.rawPayload?.data?.meeting_url || null,
+      meetingUrl,
 
       // Recording artifacts
       videoUrl:

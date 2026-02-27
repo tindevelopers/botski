@@ -27,7 +27,11 @@ class TeamworkPublisher extends BasePublisher {
     const { baseUrl, apiKey, projectId, tasklistId, milestoneId } = target.config || {};
     const descriptionParts = [];
     if (payload.summary) descriptionParts.push(`Summary:\n${payload.summary}`);
-    if (payload.metadata?.meetingUrl) descriptionParts.push(`Meeting URL: ${payload.metadata.meetingUrl}`);
+    const meetingUrl = payload.metadata?.meetingUrl;
+    const meetingUrlStr = meetingUrl != null && typeof meetingUrl === "object"
+      ? (meetingUrl.url || meetingUrl.href || meetingUrl.link || "")
+      : (typeof meetingUrl === "string" ? meetingUrl : "");
+    if (meetingUrlStr) descriptionParts.push(`Meeting URL: ${meetingUrlStr}`);
     if (payload.metadata?.videoUrl) descriptionParts.push(`Recording (video): ${payload.metadata.videoUrl}`);
     if (payload.metadata?.audioUrl) descriptionParts.push(`Recording (audio): ${payload.metadata.audioUrl}`);
 
@@ -54,7 +58,9 @@ class TeamworkPublisher extends BasePublisher {
     const createItems = [...(payload.actionItems || []), ...(payload.followUps || [])];
     if (createItems.length) {
       for (const item of createItems) {
-        const content = typeof item === "string" ? item : item.description || item.text || "Action item";
+        const content = typeof item === "string"
+          ? item
+          : (item.task || item.action || item.content || item.description || item.text || item.summary || item.title || "Action item");
         const desc = descriptionParts.join("\n\n");
         const task = await createTask({
           baseUrl,
