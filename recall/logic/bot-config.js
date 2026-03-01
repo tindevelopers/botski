@@ -12,8 +12,23 @@
  * @param {Object} options.event - Optional CalendarEvent with per-meeting overrides
  * @param {string} options.publicUrl - Public URL for webhook endpoints
  */
+function isPublicUrlSafeForRecall(url) {
+  if (!url || typeof url !== "string") return false;
+  const u = url.trim().toLowerCase();
+  return (
+    (u.startsWith("https://") || u.startsWith("http://")) &&
+    !u.includes("localhost") &&
+    !u.includes("127.0.0.1")
+  );
+}
+
 export function buildBotConfig({ calendar, event, publicUrl }) {
   const botConfig = {};
+  // Recall API returns 403 if payload contains localhost URLs; only send callbacks when URL is public
+  const safePublicUrl = isPublicUrlSafeForRecall(publicUrl) ? publicUrl.replace(/\/$/, "") : null;
+  if (publicUrl && !safePublicUrl) {
+    console.log("[BOT_CONFIG] Skipping status_callback_url and realtime_endpoints (localhost/127.0.0.1 not allowed by Recall API); bot will still join.");
+  }
 
   // Bot appearance
   if (calendar) {
@@ -78,11 +93,11 @@ export function buildBotConfig({ calendar, event, publicUrl }) {
 
     // Request real-time delivery of transcript events to our webhook.
     // Without this, you typically won't receive streaming transcript events.
-    if (wantsRealtime && publicUrl) {
+    if (wantsRealtime && safePublicUrl) {
       botConfig.recording_config.realtime_endpoints = [
         {
           type: "webhook",
-          url: `${publicUrl}/webhooks/recall-notes`,
+          url: `${safePublicUrl}/webhooks/recall-notes`,
           events: [
             "transcript.partial_data",
             "transcript.data",
@@ -93,44 +108,28 @@ export function buildBotConfig({ calendar, event, publicUrl }) {
   }
 
   // Status callback URL - receives bot lifecycle events (recording.done, bot.status_change, etc.)
-  // This is REQUIRED for receiving notifications when recording is complete
-  if (publicUrl) {
-    botConfig.status_callback_url = `${publicUrl}/webhooks/recall-notes`;
+  // Omit when URL is localhost so Recall API accepts the request (403 otherwise); webhooks need a real PUBLIC_URL.
+  if (safePublicUrl) {
+    botConfig.status_callback_url = `${safePublicUrl}/webhooks/recall-notes`;
   }
 
-  // Bot behavior settings
-  if (calendar) {
-    // Note: join_at should be calculated based on event start time, not set here
-    // The join_at is calculated when scheduling the bot, not in the bot config
-    // We'll handle this in the bot scheduling processor
-    if (calendar.autoLeaveIfAlone) {
-      botConfig.automatic_leave = {
-        waiting_room_timeout: calendar.autoLeaveAloneTimeoutSeconds || 60,
-        noone_joined_timeout: calendar.autoLeaveAloneTimeoutSeconds || 60,
-        everyone_left_timeout: calendar.autoLeaveAloneTimeoutSeconds || 60,
-      };
-    }
-  }
-
-  // Bot detection: tell the difference between real participants and other notetakers/bots.
-  // If another notetaker (e.g. Otter, Fireflies, human-named "Notetaker") is detected and only
-  // bots remain in the meeting, our bot will disconnect and leave to avoid duplicate notes.
-  // Use a short activate_after (90s) so short meetings still trigger leave; previously 300s
-  // meant the bot would stay if all humans left before 5 minutes.
+  // Bot behavior settings and automatic_leave (required for bot_detection to be applied).
+  // Recall API expects bot_detection INSIDE automatic_leave; top-level bot_detection is ignored.
   const botDetectionActivateAfter = 90;
-  botConfig.bot_detection = {
-    // Detect other notetakers/bots by participant display names
+  const botDetectionNamesTimeout = 10;
+
+  // Use ONLY participant names for bot detection. Do NOT use using_participant_events.
+  // Reason: Fireflies and other notetakers can emit active_speaker/screenshare events (or platforms
+  // report them), which marks them as "real" participants. That blocks our bot from leaving when
+  // only notetakers remain. Name-based detection is more reliable (per Recall docs).
+  const botDetection = {
     using_participant_names: {
-      keywords: [
-        // Generic bot indicators
+      matches: [
         "notetaker",
         "note taker",
         "recorder",
         "assistant",
         "bot",
-        "ai ",
-        " ai",
-        // Common AI meeting bot vendors
         "otter",
         "otter.ai",
         "fireflies",
@@ -162,20 +161,23 @@ export function buildBotConfig({ calendar, event, publicUrl }) {
         "loom",
         "recall",
       ],
-      // Start detecting after 90s so short meetings still trigger leave when only bots remain
       activate_after: botDetectionActivateAfter,
-      // Leave 10 seconds after detecting only bots remain
-      timeout: 10,
+      timeout: botDetectionNamesTimeout,
     },
-    // Also detect by behavior: participants who never speak or share screen are likely bots
-    using_participant_events: {
-      types: ["active_speaker", "screen_share"],
-      activate_after: botDetectionActivateAfter,
-      // Leave 30 seconds after detecting no human activity
-      timeout: 30,
-    },
+    // using_participant_events REMOVED: Fireflies/other notetakers can trigger active_speaker
+    // events, which keeps our bot from leaving. Rely on participant names only.
   };
-  // Result: bot leaves when it detects only other notetakers/bots (no real participants).
+
+  botConfig.automatic_leave = {
+    bot_detection: botDetection,
+    ...(calendar?.autoLeaveIfAlone
+      ? {
+          waiting_room_timeout: calendar.autoLeaveAloneTimeoutSeconds || 60,
+          noone_joined_timeout: calendar.autoLeaveAloneTimeoutSeconds || 60,
+          everyone_left_timeout: calendar.autoLeaveAloneTimeoutSeconds || 60,
+        }
+      : {}),
+  };
 
   return botConfig;
 }

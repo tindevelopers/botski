@@ -252,6 +252,9 @@
                                   <span> - </span>
                                   <span class="local-datetime" data-iso="<%= new Date(event.endTime).toISOString() %>" data-format="time"></span>
                                 <% } %>
+                                <% if (event.isInProgress) { %>
+                                  <span class="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800" title="Meeting in progress – you can send the bot to record now">In progress</span>
+                                <% } %>
                               <% } %>
                             </div>
                             
@@ -346,11 +349,11 @@
                                 <form method="post" action="/calendar-event/<%= event.id %>/set-manual-record" class="mb-3">
                                   <input type="hidden" name="_method" value="PATCH" />
                                   <input type="hidden" name="manualRecord" value="true" />
-                                  <button type="submit" class="w-full inline-flex items-center justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 transition-colors">
+                                  <button type="submit" class="w-full inline-flex items-center justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 transition-colors" title="<%= event.isInProgress ? 'Send bot to join now and record' : 'Schedule bot to record this meeting' %>">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                                     </svg>
-                                    Send Bot
+                                    <%= event.isInProgress ? 'Send Bot Now' : 'Send Bot' %>
                                   </button>
                                 </form>
                               <% } else { %>

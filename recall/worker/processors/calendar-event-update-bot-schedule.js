@@ -2,7 +2,7 @@ import Recall from "../../services/recall/index.js";
 import db from "../../db.js";
 import { buildBotConfig } from "../../logic/bot-config.js";
 import { telemetryEvent } from "../../utils/telemetry.js";
-import { checkForSharedBot, getSharedDeduplicationKey, findExistingBotForMeeting } from "../../utils/shared-bot-scheduling.js";
+import { checkForSharedBot, getSharedDeduplicationKey, findExistingBotForMeeting, getMeetingOrganizerEmail, extractCompanyDomain } from "../../utils/shared-bot-scheduling.js";
 
 // add or remove bot for a calendar event based on its record status
 export default async (job) => {
@@ -78,21 +78,27 @@ export default async (job) => {
     });
     
     // #region agent log
-    const bd = botConfig?.bot_detection;
-    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:bot_config_built',message:'Bot config built (bot_detection sent)',data:{eventId:event.id,recallEventId:event.recallId,hasBotDetection:!!bd,activateAfterNames:bd?.using_participant_names?.activate_after,activateAfterEvents:bd?.using_participant_events?.activate_after,timeoutNames:bd?.using_participant_names?.timeout},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+    const bd = botConfig?.automatic_leave?.bot_detection;
+    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:bot_config_built',message:'Bot config built (bot_detection under automatic_leave)',data:{eventId:event.id,recallEventId:event.recallId,hasBotDetection:!!bd,activateAfterNames:bd?.using_participant_names?.activate_after,activateAfterEvents:bd?.using_participant_events?.activate_after,timeoutNames:bd?.using_participant_names?.timeout},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
     // #endregion
     
     // Calculate join_at time - this is when the bot actually joins the meeting
     // Note: The 10-minute "scheduled bot" requirement is about when you CALL the API,
     // not when the bot joins. join_at can be set to any time before the meeting starts.
     // Recall API expects join_at as ISO8601 datetime string
+    const now = new Date();
     const joinBeforeStartMinutes = calendar?.joinBeforeStartMinutes ?? 1;
     const joinAtTime = new Date(event.startTime);
     joinAtTime.setMinutes(joinAtTime.getMinutes() - joinBeforeStartMinutes);
     
-    // Add join_at to bot config if we have a valid start time
-    if (event.startTime && event.startTime > new Date()) {
+    // Add join_at to bot config
+    if (event.startTime && event.startTime > now) {
+      // Future meeting: join shortly before start
       botConfig.join_at = joinAtTime.toISOString();
+    } else if (event.startTime && event.startTime <= now) {
+      // Meeting in progress: join immediately (ad-hoc bot). Omit join_at or set to now
+      // so Recall creates an ad-hoc bot that joins right away.
+      botConfig.join_at = now.toISOString();
     }
     
     // #region agent log
@@ -108,26 +114,67 @@ export default async (job) => {
     if (event.meetingUrl && userEmail) {
       // Check if another user from the same company already has a bot scheduled
       sharedBotInfo = await checkForSharedBot(event.meetingUrl, calendar.userId, userEmail);
-      
+      const organizerEmail = getMeetingOrganizerEmail(event);
+      const isOrganizer = organizerEmail && userEmail &&
+        organizerEmail.toLowerCase().trim() === userEmail.toLowerCase().trim();
+      const isSameCompany = !!extractCompanyDomain(userEmail);
+
+      await telemetryEvent(
+        "BotScheduling.shared_bot_decision",
+        {
+          recallEventId: event.recallId,
+          eventId: event.id,
+          userEmail,
+          organizerEmail: organizerEmail || null,
+          isOrganizer,
+          isSameCompany,
+          hasSharedBot: sharedBotInfo?.hasSharedBot ?? false,
+          sharedEventId: sharedBotInfo?.sharedEventId ?? null,
+          sharedUserEmail: sharedBotInfo?.sharedUserEmail ?? null,
+        },
+        { location: "worker/processors/calendar-event-update-bot-schedule.js:shared_bot_decision" }
+      );
+
       // #region agent log
-      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:shared_bot_check',message:'Shared bot check result',data:{recallEventId:event.recallId,eventId:event.id,hasSharedBot:sharedBotInfo?.hasSharedBot,sharedBotId:sharedBotInfo?.sharedBotId,sharedEventId:sharedBotInfo?.sharedEventId},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:shared_bot_check',message:'Shared bot check result',data:{recallEventId:event.recallId,eventId:event.id,hasSharedBot:sharedBotInfo?.hasSharedBot,sharedBotId:sharedBotInfo?.sharedBotId,sharedEventId:sharedBotInfo?.sharedEventId,organizerEmail:organizerEmail||null,isOrganizer,sharedUserEmail:sharedBotInfo?.sharedUserEmail},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
       // #endregion
-      
+
       if (sharedBotInfo.hasSharedBot && sharedBotInfo.sharedBotId) {
-        // Another user from the same company already has a bot scheduled for this meeting
-        // Skip scheduling to avoid duplicate bots
-        console.log(
-          `[SHARED-BOT] Skipping - bot already scheduled by same company: eventId=${event.id} sharedEventId=${sharedBotInfo.sharedEventId} sharedBotId=${sharedBotInfo.sharedBotId} sharedUser=${sharedBotInfo.sharedUserEmail}`
+        // A bot is already scheduled for this meeting (same company). Attach it to this event
+        // so this user sees "Bot scheduled" and gets the recording, then skip creating another.
+        const existing = await findExistingBotForMeeting(
+          event.meetingUrl,
+          userEmail,
+          sharedBotInfo.sharedEventId
         );
-        return; // Exit early - no need to schedule another bot
-      }
-      
-      if (sharedBotInfo.hasSharedBot) {
+        if (existing?.bots?.length > 0) {
+          const merged = { ...(event.recallData || {}), bots: existing.bots };
+          event.recallData = merged;
+          await event.save();
+          console.log(
+            `[SHARED-BOT] Attached existing bot to event ${event.id}: botIds=[${existing.bots.map(b => b.id).join(", ")}] sharedUser=${sharedBotInfo.sharedUserEmail} isOrganizer=${isOrganizer}`
+          );
+        }
         console.log(
-          `[SHARED-BOT] Found existing bot from same company: eventId=${event.id} sharedEventId=${sharedBotInfo.sharedEventId} sharedBotId=${sharedBotInfo.sharedBotId} sharedUser=${sharedBotInfo.sharedUserEmail}`
+          `[SHARED-BOT] Skipping - bot already scheduled: eventId=${event.id} sharedEventId=${sharedBotInfo.sharedEventId} sharedUser=${sharedBotInfo.sharedUserEmail} isOrganizer=${isOrganizer}`
         );
+        return;
       }
-      
+
+      // Same company but no shared bot yet: only the meeting organizer should schedule,
+      // so the bot that joins is the owner's (name/settings). Participants will attach when organizer's bot exists.
+      if (isSameCompany && !isOrganizer) {
+        console.log(
+          `[SHARED-BOT] Skipping - not meeting organizer (only organizer schedules for company): eventId=${event.id} user=${userEmail} organizer=${organizerEmail || "unknown"}`
+        );
+        await telemetryEvent(
+          "BotScheduling.skipped_not_organizer",
+          { recallEventId: event.recallId, eventId: event.id, userEmail, organizerEmail: organizerEmail || null },
+          { location: "worker/processors/calendar-event-update-bot-schedule.js:skip_not_organizer" }
+        );
+        return;
+      }
+
       // Use shared deduplication key for company coordination
       // This ensures only one bot is scheduled even if multiple users try simultaneously
       const sharedKey = getSharedDeduplicationKey(event.meetingUrl, userEmail);
@@ -146,13 +193,25 @@ export default async (job) => {
       `[BOT_CONFIG] Scheduling summary: eventId=${event.id} recallEventId=${event.recallId} start=${event.startTime.toISOString()} join_at=${botConfig.join_at || "not_set"} hasMeetingUrl=${!!event.meetingUrl} deduplicationKey=${deduplicationKey}${sharedBotInfo?.hasSharedBot ? ' [SHARED]' : ''}`
     );
     
-    // Validate event is in the future before scheduling
-    if (event.startTime <= new Date()) {
+    // Validate event is not fully in the past before scheduling
+    // Allow "in progress" meetings (started but not ended) - user can send bot mid-meeting
+    const eventEndTime = event.recallData?.end_time ? new Date(event.recallData.end_time) : null;
+    const hasValidEndTime = eventEndTime && !isNaN(eventEndTime.getTime());
+    const isMeetingEnded = hasValidEndTime && eventEndTime < now;
+    const startedLongAgo = now - event.startTime > 24 * 60 * 60 * 1000; // > 24h
+    const isMeetingInProgress = event.startTime <= now && !isMeetingEnded && !startedLongAgo;
+    if (event.startTime > now) {
+      // Future meeting - will use join_at before start
+    } else if (isMeetingInProgress) {
+      // In progress - will use join_at = now for immediate join
+      console.log(`[BOT_CONFIG] Scheduling bot for in-progress meeting: eventId=${event.id} recallEventId=${event.recallId} (bot will join immediately)`);
+    } else {
+      // Meeting has ended or started too long ago - skip
       // #region agent log
-      fetch('http://127.0.0.1:7250/ingest/bf0206c3-6e13-4499-92a3-7fb2b7527fcf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:skipped_past_event',message:'Skipping past/ongoing event',data:{eventId:event.id,recallEventId:event.recallId,startTime:event.startTime.toISOString(),now:new Date().toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'bot-schedule',hypothesisId:'D'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7250/ingest/bf0206c3-6e13-4499-92a3-7fb2b7527fcf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:skipped_ended_event',message:'Skipping ended event',data:{eventId:event.id,recallEventId:event.recallId,startTime:event.startTime.toISOString(),endTime:eventEndTime?.toISOString(),now:now.toISOString(),startedLongAgo},timestamp:Date.now(),sessionId:'debug-session',runId:'bot-schedule',hypothesisId:'D'})}).catch(()=>{});
       // #endregion
       console.warn(
-        `[BOT_CONFIG] Skipping (past/ongoing): eventId=${event.id} recallEventId=${event.recallId} start=${event.startTime.toISOString()}`
+        `[BOT_CONFIG] Skipping (meeting ended or too old): eventId=${event.id} recallEventId=${event.recallId} start=${event.startTime.toISOString()} end=${eventEndTime?.toISOString() || 'unknown'}`
       );
       return;
     }

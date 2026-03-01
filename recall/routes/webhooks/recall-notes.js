@@ -153,13 +153,20 @@ export default async (req, res) => {
   const hasTranscript = !!(data?.transcript?.segments || data?.transcript_segments || data?.segments || data?.words);
   console.log(`[RECALL-NOTES] Recording data present: ${hasRecording}, Transcript data present: ${hasTranscript}`);
   
-  // For bot.status_change events, log the status details
+  // For bot.status_change events, log the status details with full instrumentation for debugging leave behavior
   if (event === "bot.status_change") {
     const status = data?.status || rawPayload?.status;
     const statusCode = status?.code;
     const subCode = status?.sub_code;
     const statusMessage = status?.message;
+    // Log full status object for debugging bot_detection / automatic_leave (participant info, etc.)
+    const fullStatusJson = JSON.stringify(status || {});
     console.log(`[RECALL-NOTES] Bot status change: botId=${recallBotId}, eventId=${recallEventId}, code=${statusCode}, sub_code=${subCode}, message=${statusMessage}`);
+    console.log(`[RECALL-NOTES] Full status object (for leave debugging): ${fullStatusJson}`);
+    // Log full payload for leave events so we can diagnose why bot stayed (e.g. Fireflies blocking)
+    if (statusCode === "left_call" || statusCode === "call_ended" || statusCode === "left" || subCode === "automatic_leave" || subCode === "bot_detection" || subCode === "kicked") {
+      console.log(`[RECALL-NOTES] LEAVE EVENT - full payload: ${JSON.stringify(rawPayload)}`);
+    }
     // #region agent log
     const codeStr = String(statusCode || "").toLowerCase();
     const isJoinFailure = /fail|error|fatal|reject|denied|blocked/.test(codeStr) || subCode === "kicked";
@@ -168,7 +175,7 @@ export default async (req, res) => {
     else if (subCode === "bot_detection") hypothesisId = "H2";
     else if (subCode === "automatic_leave" || ((statusCode === "left_call" || statusCode === "call_ended") && !subCode)) hypothesisId = "H3";
     else if (statusCode === "joined_call" || statusCode === "in_call") hypothesisId = "H-joined";
-    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'recall-notes.js:bot.status_change',message:'Bot status change',data:{recallBotId,recallEventId,statusCode,subCode,statusMessage},timestamp:Date.now(),hypothesisId})}).catch(()=>{});
+    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'recall-notes.js:bot.status_change',message:'Bot status change',data:{recallBotId,recallEventId,statusCode,subCode,statusMessage,fullStatus:status},timestamp:Date.now(),hypothesisId})}).catch(()=>{});
     // #endregion
     
     // Log all status changes for debugging

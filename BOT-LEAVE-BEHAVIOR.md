@@ -2,44 +2,45 @@
 
 ## What we send to Recall
 
-The app sends **bot_detection** and (optionally) **automatic_leave** in the bot config when scheduling. Recall’s bot uses this to decide when to leave the meeting.
+The app sends **bot_detection** and (optionally) **automatic_leave** in the bot config when scheduling. Recall's bot uses this to decide when to leave the meeting.
 
 - **Bot detection**  
-  - Detects other notetakers/bots by participant display names (e.g. “Fireflies.ai Notetaker”, “Otter”, “Notetaker”) and by behavior (no speaking/screen share).  
+  - Detects other notetakers/bots by participant display names only (e.g. "Fireflies.ai Notetaker", "Otter", "Notetaker").  
   - When it concludes that only bots remain, our bot disconnects after a short timeout to avoid duplicate notes.
 
-- **Automatic leave** (if “Auto-leave when alone” is enabled in calendar settings)  
-  - Uses `waiting_room_timeout`, `noone_joined_timeout`, and `everyone_left_timeout` so the bot leaves when alone or when everyone has left (by Recall’s participant count).
+- **Automatic leave** (if "Auto-leave when alone" is enabled in calendar settings)  
+  - Uses `waiting_room_timeout`, `noone_joined_timeout`, and `everyone_left_timeout` so the bot leaves when alone or when everyone has left (by Recall's participant count).
 
 ## Why the bot sometimes stayed (e.g. with Fireflies)
 
-Previously, bot_detection **only started after 5 minutes** (`activate_after: 300`). So:
+### Issue 1: activate_after was too long (fixed)
+Previously, bot_detection **only started after 5 minutes** (`activate_after: 300`). Short meetings where everyone left before 5 minutes never triggered detection.
 
-- If all humans left before 5 minutes (e.g. short test meeting), detection never ran.
-- The bot would stay in the call with the other notetaker (e.g. Fireflies) and not leave.
+### Issue 2: using_participant_events blocked leave (fixed)
+We used both name-based and **behavior-based** detection (`using_participant_events`). That heuristic marks a participant as "real" if they emit `active_speaker` or `screenshare_start`. Fireflies and other notetakers can trigger these events (or the platform reports them), so our bot never concluded "only bots remain" and stayed in the call.
 
-So the “bot will leave when only notetakers remain” behavior only applied to meetings that had already been running for at least 5 minutes.
+## Current configuration
 
-## Change made
+- **Name-based detection only** (`using_participant_names`): `activate_after` 90s, `timeout` 10s.
+- **`using_participant_events` removed** – Fireflies/other notetakers can emit activity that blocks leave. Name-based is more reliable (per Recall docs).
 
-- **activate_after** was reduced from **300 seconds (5 min)** to **90 seconds (~1.5 min)** for both:
-  - name-based detection (participant names), and  
-  - behavior-based detection (active_speaker / screen_share).
-
-So now:
-
-- After about 1.5 minutes, the bot starts checking whether the only other participants look like notetakers.
-- If it detects only other notetakers (e.g. “Fireflies.ai Notetaker Gene”), it leaves after the usual short timeouts (10s for name-based, 30s for behavior-based).
-
-Short meetings (e.g. “4 Feb Test Event”) where everyone leaves before 5 minutes should now see our bot leave instead of staying with Fireflies.
-
-## Where it’s configured
+## Where it's configured
 
 - **recall/logic/bot-config.js**  
-  - `bot_detection.using_participant_names.activate_after`  
-  - `bot_detection.using_participant_events.activate_after`  
-  - Both use the same constant (90 seconds). No calendar override yet; can be made configurable later if needed.
+  - Bot detection is sent under **`automatic_leave.bot_detection`** (Recall API ignores top-level `bot_detection`).
+  - Participant names use the **`matches`** array (API expects `matches`, not `keywords`).
+  - `using_participant_names`: `activate_after` 90s, `timeout` 10s.
 
-## Note on “Fireflies stayed”
+## Instrumentation for debugging
 
-If the **Fireflies** notetaker is still in the meeting after everyone left, that’s expected: we only control our own Recall bot. We can’t make Fireflies leave. The fix above only ensures **our** bot leaves when it detects that only other notetakers (like Fireflies) remain.
+When the bot leaves or its status changes, the webhook logs:
+
+- **recall/routes/webhooks/recall-notes.js**  
+  - Full `status` object for every `bot.status_change` (includes any participant info Recall sends).
+  - Full payload for leave events (`left_call`, `call_ended`, `bot_detection`, `automatic_leave`, `kicked`).
+
+Check Railway logs (or server stdout) for `[RECALL-NOTES]` to diagnose leave behavior. Search for `LEAVE EVENT` or `Bot left due to bot_detection` to confirm the bot left as expected.
+
+## Note on "Fireflies stayed"
+
+If the **Fireflies** notetaker is still in the meeting after everyone left, that's expected: we only control our own Recall bot. We can't make Fireflies leave. Our bot should now leave when it detects only other notetakers (by name) remain.

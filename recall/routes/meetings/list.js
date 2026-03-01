@@ -1577,24 +1577,36 @@ export default async (req, res) => {
           // JavaScript Date comparisons work correctly regardless of timezone
           const isFuture = startDate >= nowDate && startDate <= futureCutoff;
           
+          // Also include "in progress" meetings: started but not yet ended.
+          // Allows sending a bot mid-meeting (e.g. if it didn't join at start, or for ad-hoc recording).
+          const endTimeRaw = event.recallData?.end_time;
+          const endDate = endTimeRaw ? new Date(endTimeRaw) : null;
+          const hasValidEndDate = endDate && !isNaN(endDate.getTime());
+          const isInProgress =
+            startDate < nowDate &&
+            ((hasValidEndDate && endDate >= nowDate) ||
+              (!hasValidEndDate && nowDate - startDate < 4 * 60 * 60 * 1000)); // no end_time: assume in progress if started within 4h
+          
+          const includeEvent = isFuture || isInProgress;
+          
           // Log first few events for debugging (especially on Railway)
           if (allEventsUnfiltered.indexOf(event) < 5) {
-            console.log(`[MEETINGS] Event ${event.id} "${event.title}": startTime=${startTime}, startDate=${startDate.toISOString()}, nowDate=${nowDate.toISOString()}, isFuture=${isFuture}`);
+            console.log(`[MEETINGS] Event ${event.id} "${event.title}": startTime=${startTime}, startDate=${startDate.toISOString()}, nowDate=${nowDate.toISOString()}, isFuture=${isFuture}, isInProgress=${isInProgress}`);
           }
           
           // #region agent log
           if (calendarId === '039a4ad4-1257-4ad1-9ef4-3096bc1c8f98' || allEventsUnfiltered.indexOf(event) < 5) {
-            debugLog('routes/meetings/list.js:eventDateComparison', 'Event date comparison result', { eventId: event.id, recallId: event.recallId, title: event.title, calendarId, startTime: startDate.toISOString(), nowTime: nowDate.toISOString(), futureCutoffTime: futureCutoff.toISOString(), isFuture, timeDiffMs: startDate.getTime() - nowDate.getTime() }, 'H5');
+            debugLog('routes/meetings/list.js:eventDateComparison', 'Event date comparison result', { eventId: event.id, recallId: event.recallId, title: event.title, calendarId, startTime: startDate.toISOString(), nowTime: nowDate.toISOString(), futureCutoffTime: futureCutoff.toISOString(), isFuture, isInProgress, includeEvent, timeDiffMs: startDate.getTime() - nowDate.getTime() }, 'H5');
           }
           // #endregion
           
-          if (isFuture) {
-            filteredEvents.push({ id: event.id, title: event.title, startTime: startDate.toISOString(), calendarId });
+          if (includeEvent) {
+            filteredEvents.push({ id: event.id, title: event.title, startTime: startDate.toISOString(), calendarId, isInProgress });
           } else {
-            rejectedEvents.push({ id: event.id, reason: 'not_future', startTime: startDate.toISOString(), nowISO: nowDate.toISOString(), title: event.title, calendarId, recallId: event.recallId });
+            rejectedEvents.push({ id: event.id, reason: 'not_future_or_in_progress', startTime: startDate.toISOString(), nowISO: nowDate.toISOString(), title: event.title, calendarId, recallId: event.recallId });
           }
           
-          return isFuture;
+          return includeEvent;
         } catch (error) {
           rejectedEvents.push({ id: event.id, reason: 'parse_error', error: error.message, title: event.title, calendarId: event.calendarId, recallId: event.recallId });
           console.error(`[MEETINGS] Error parsing start time for event ${event.id}:`, error);
@@ -1728,13 +1740,21 @@ export default async (req, res) => {
       // Get attendees for display
       const attendees = getAttendeesFromEvent(event);
       
-      
+      // Mark in-progress meetings (started but not ended) - user can send bot mid-meeting
+      const nowForProgress = new Date();
+      const eventEnd = event.recallData?.end_time ? new Date(event.recallData.end_time) : null;
+      const hasValidEnd = eventEnd && !isNaN(eventEnd.getTime());
+      const isInProgress =
+        event.startTime <= nowForProgress &&
+        ((hasValidEnd && eventEnd >= nowForProgress) ||
+          (!hasValidEnd && nowForProgress - event.startTime < 4 * 60 * 60 * 1000));
       
       upcomingEvents.push({
         id: event.id,
         title: event.title || "Untitled Meeting",
         startTime: event.startTime,
         endTime: event.endTime,
+        isInProgress,
         meetingUrl: event.meetingUrl,
         platform: event.Calendar?.platform || null,
         calendarEmail: event.Calendar?.email || null,
