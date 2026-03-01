@@ -2,6 +2,23 @@ import db from "../db.js";
 import Recall from "../services/recall/index.js";
 
 /**
+ * Get the meeting organizer email from a calendar event (for owner-priority bot scheduling).
+ * @param {Object} event - CalendarEvent with recallData.raw
+ * @returns {string|null} Organizer email or null
+ */
+export function getMeetingOrganizerEmail(event) {
+  if (!event?.recallData?.raw) return null;
+  const raw = event.recallData.raw;
+  if (event.platform === "google_calendar" && raw.organizer?.email) {
+    return raw.organizer.email;
+  }
+  if (event.platform === "microsoft_outlook" && raw.organizer?.emailAddress?.address) {
+    return raw.organizer.emailAddress.address;
+  }
+  return null;
+}
+
+/**
  * Normalize a meeting URL for comparison.
  * Removes query parameters, fragments, and normalizes the URL.
  */

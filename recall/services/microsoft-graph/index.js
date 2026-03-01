@@ -428,9 +428,110 @@ export function parseVTTTranscript(vttContent) {
   return chunks;
 }
 
+/**
+ * Extract meeting info from a raw Teams meeting URL (no calendar event).
+ * Used for external ingest when user pastes a URL.
+ * @param {string} meetingUrl - Teams meeting URL
+ * @returns {Object|null} { userId, meetingId, joinWebUrl } or null
+ */
+export function extractTeamsMeetingInfoFromUrl(meetingUrl) {
+  if (!meetingUrl || typeof meetingUrl !== "string") return null;
+  if (!meetingUrl.includes("teams.microsoft.com")) return null;
+
+  const meetupMatch = meetingUrl.match(/\/meetup-join\/([^\/\?]+)/);
+  const meetingMatch = meetingUrl.match(/\/meeting\/([^\/\?]+)/);
+  const meetingIdFromUrl = meetupMatch?.[1] || meetingMatch?.[1];
+  if (!meetingIdFromUrl) return null;
+
+  let organizerObjectId = null;
+  try {
+    const contextMatch = meetingUrl.match(/context=([^&]+)/);
+    if (contextMatch) {
+      const context = JSON.parse(decodeURIComponent(contextMatch[1]));
+      organizerObjectId = context.Oid;
+    }
+  } catch {
+    // ignore
+  }
+
+  return {
+    userId: organizerObjectId || "me", // "me" works for /me/ endpoint
+    meetingId: decodeURIComponent(meetingIdFromUrl),
+    joinWebUrl: meetingUrl.trim(),
+  };
+}
+
+/**
+ * Fetch transcript and recording for a Teams meeting by URL.
+ * Tries with the given calendar's token. Used for external ingest.
+ * @param {string} meetingUrl - Teams meeting URL
+ * @param {Object} calendar - Calendar model (Microsoft Outlook)
+ * @returns {Promise<{ transcriptData: Object|null, recordingMetadata: Object|null }>}
+ */
+export async function fetchTeamsDataByMeetingUrl(meetingUrl, calendar) {
+  const meetingInfo = extractTeamsMeetingInfoFromUrl(meetingUrl);
+  if (!meetingInfo) return { transcriptData: null, recordingMetadata: null };
+
+  const client = getGraphClient(calendar);
+  if (!client) return { transcriptData: null, recordingMetadata: null };
+
+  // Use calendar owner's email for /users/ fallback (Graph accepts UPN)
+  const userId = meetingInfo.userId === "me" ? (calendar.email || "me") : meetingInfo.userId;
+
+  let actualMeetingId = meetingInfo.meetingId;
+  const meeting = await client.findMeetingByJoinUrl(userId, meetingInfo.joinWebUrl);
+  if (meeting?.id) {
+    actualMeetingId = meeting.id;
+  }
+
+  const [transcriptData, recordings] = await Promise.all([
+    (async () => {
+      try {
+        const transcripts = await client.listMeetingTranscripts(userId, actualMeetingId);
+        const list = transcripts?.value || transcripts || [];
+        if (list.length === 0) return null;
+        const t = list[0];
+        const transcriptId = t.id || t.transcriptId;
+        if (!transcriptId) return null;
+        const content = await client.getTranscriptContent(userId, actualMeetingId, transcriptId);
+        return {
+          content: typeof content === "string" ? content : JSON.stringify(content),
+          transcriptId,
+          meetingId: actualMeetingId,
+          userId,
+          metadata: t,
+        };
+      } catch (e) {
+        console.warn(`[MS Graph] Transcript fetch failed: ${e.message}`);
+        return null;
+      }
+    })(),
+    (async () => {
+      try {
+        return await client.listMeetingRecordings(userId, actualMeetingId);
+      } catch (e) {
+        console.warn(`[MS Graph] Recordings fetch failed: ${e.message}`);
+        return [];
+      }
+    })(),
+  ]);
+
+  const recordingMetadata =
+    recordings && recordings.length > 0
+      ? { recordings, meetingId: actualMeetingId, userId, joinWebUrl: meetingInfo.joinWebUrl }
+      : null;
+
+  return {
+    transcriptData,
+    recordingMetadata,
+  };
+}
+
 export default {
   fetchTeamsTranscript,
   fetchTeamsRecordingMetadata,
+  fetchTeamsDataByMeetingUrl,
+  extractTeamsMeetingInfoFromUrl,
   hasTeamsRecording,
   parseVTTTranscript,
   extractTeamsMeetingInfo,

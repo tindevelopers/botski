@@ -333,12 +333,13 @@ function extractMeetingTitle(artifact, calendarEvent) {
     return calEventTitle;
   }
 
-  // 3) Artifact payload title
-  if (
-    artifact?.rawPayload?.data?.title &&
-    !isGenericMeetingTitle(artifact.rawPayload.data.title)
-  ) {
-    return artifact.rawPayload.data.title;
+  // 3) Artifact payload title (data.title, rawPayload.title, or artifact.title)
+  const artifactPayloadTitle =
+    artifact?.rawPayload?.data?.title ||
+    artifact?.rawPayload?.title ||
+    artifact?.title;
+  if (artifactPayloadTitle && !isGenericMeetingTitle(artifactPayloadTitle)) {
+    return artifactPayloadTitle;
   }
 
   // 4) Bot calendar_meetings title (from Recall API bot data)
@@ -373,7 +374,10 @@ function extractMeetingTitle(artifact, calendarEvent) {
 
   // 7) Derive from meeting URL
   const meetingUrl =
-    artifact?.rawPayload?.data?.meeting_url || calendarEvent?.meetingUrl;
+    artifact?.rawPayload?.data?.meeting_url ||
+    artifact?.rawPayload?.meetingUrl ||
+    artifact?.meetingUrl ||
+    calendarEvent?.meetingUrl;
   if (meetingUrl) {
     const urlTitle = extractTitleFromUrl(meetingUrl);
     if (urlTitle) return urlTitle;
@@ -2011,7 +2015,9 @@ export default async (req, res) => {
   // Build a map of artifact thread_ids
   const artifactThreadIds = new Set();
   for (const artifact of artifacts) {
-    const threadId = extractThreadId(artifact.rawPayload?.data?.meeting_url);
+    const threadId = extractThreadId(
+      artifact.rawPayload?.data?.meeting_url || artifact.rawPayload?.meetingUrl || artifact.meetingUrl
+    );
     if (threadId) {
       artifactThreadIds.add(threadId);
     }
@@ -2160,7 +2166,9 @@ export default async (req, res) => {
   // Add artifacts
   for (const artifact of artifacts) {
     // Generate deduplication key
-    const artifactThreadId = extractThreadId(artifact.rawPayload?.data?.meeting_url);
+    const artifactThreadId = extractThreadId(
+      artifact.rawPayload?.data?.meeting_url || artifact.rawPayload?.meetingUrl || artifact.meetingUrl
+    );
     const calendarEvent =
       artifact.CalendarEvent ||
       (artifactThreadId ? calendarEventsByThreadId.get(artifactThreadId) : null);
@@ -2173,7 +2181,8 @@ export default async (req, res) => {
     const hasRecordingFlag = !!(
       artifact.rawPayload?.data?.video_url ||
       artifact.rawPayload?.data?.recording_url ||
-      artifact.rawPayload?.data?.media_shortcuts?.video?.data?.download_url
+      artifact.rawPayload?.data?.media_shortcuts?.video?.data?.download_url ||
+      artifact.sourceRecordingUrl
     );
     
     // Generate deduplication key (need friendlyMeetingId for this)
@@ -2256,11 +2265,15 @@ export default async (req, res) => {
     const hasRecallRecordingFlag = hasRecordingFlag && !!artifact.recallBotId;
 
     // Check if this is a Teams recording
+    const meetingUrlForTeamsCheck =
+      artifact.rawPayload?.data?.meetingUrl ||
+      artifact.rawPayload?.meetingUrl ||
+      artifact.meetingUrl;
     const hasTeamsRecordingFlag =
       artifact.eventType === "teams_recording" ||
+      artifact.eventType === "teams_url_ingest" ||
       artifact.rawPayload?.source === "microsoft_teams" ||
-      (typeof artifact.rawPayload?.data?.meetingUrl === "string" &&
-        artifact.rawPayload.data.meetingUrl.includes("teams.microsoft.com")) ||
+      (typeof meetingUrlForTeamsCheck === "string" && meetingUrlForTeamsCheck.includes("teams.microsoft.com")) ||
       (calendarEvent?.meetingUrl && calendarEvent.meetingUrl.includes("teams.microsoft.com"));
 
     const teamsRecordingUrl =
@@ -2520,6 +2533,7 @@ export default async (req, res) => {
         artifact.rawPayload?.data?.video_url ||
         artifact.rawPayload?.data?.recording_url ||
         artifact.rawPayload?.data?.media_shortcuts?.video?.data?.download_url ||
+        artifact.sourceRecordingUrl ||
         null,
       audioUrl:
         artifact.rawPayload?.data?.audio_url ||

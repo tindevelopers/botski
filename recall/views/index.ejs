@@ -98,9 +98,9 @@
                   <% upcomingMeetings.slice(0, 20).forEach(function(event) { 
                     const startTime = new Date(event.recallData?.start_time);
                     const endTime = new Date(event.recallData?.end_time);
+                    const startTimeISO = startTime.toISOString();
+                    const endTimeISO = endTime.toISOString();
                     const title = event.title || 'Untitled Meeting';
-                    const isToday = startTime.toDateString() === new Date().toDateString();
-                    const isTomorrow = startTime.toDateString() === new Date(Date.now() + 86400000).toDateString();
                     const willRecord = event.shouldRecordAutomatic || event.shouldRecordManual;
                     const attendees = event.attendees || [];
                     const nonOrganizerAttendees = attendees.filter(a => !a.organizer);
@@ -109,22 +109,13 @@
                       <div class="flex items-start justify-between gap-4">
                         <div class="flex items-start gap-4 min-w-0">
                           <div class="flex-shrink-0 text-center">
-                            <% if (isToday) { %>
-                              <div class="text-xs font-semibold text-indigo-600 uppercase">Today</div>
-                            <% } else if (isTomorrow) { %>
-                              <div class="text-xs font-semibold text-amber-600 uppercase">Tomorrow</div>
-                            <% } else { %>
-                              <div class="text-xs font-medium text-gray-500 uppercase"><%= startTime.toLocaleDateString('en-US', { weekday: 'short' }) %></div>
-                            <% } %>
-                            <div class="text-lg font-bold text-gray-900"><%= startTime.getDate() %></div>
-                            <div class="text-xs text-gray-500"><%= startTime.toLocaleDateString('en-US', { month: 'short' }) %></div>
+                            <div class="text-xs font-medium text-gray-500 uppercase local-date-label" data-iso="<%= startTimeISO %>"></div>
+                            <div class="text-lg font-bold text-gray-900 local-date-day" data-iso="<%= startTimeISO %>"></div>
+                            <div class="text-xs text-gray-500 local-date-month" data-iso="<%= startTimeISO %>"></div>
                           </div>
                           <div class="min-w-0 flex-1">
                             <h3 class="text-sm font-semibold text-gray-900 truncate"><%= title %></h3>
-                            <p class="mt-1 text-sm text-gray-500">
-                              <%= startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) %> - 
-                              <%= endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) %>
-                            </p>
+                            <p class="mt-1 text-sm text-gray-500 local-time-range" data-start-iso="<%= startTimeISO %>" data-end-iso="<%= endTimeISO %>"></p>
                             <% if (nonOrganizerAttendees.length > 0) { %>
                               <p class="mt-1 text-xs text-gray-500 truncate">
                                 <span class="text-gray-400">With:</span>
@@ -394,6 +385,46 @@ document.getElementById('ai-assistant-form')?.addEventListener('submit', async f
     result.innerHTML = '<p class="text-red-200">An error occurred. Please try again.</p>';
   }
 });
+</script>
+
+<script>
+// Format upcoming meeting times in the user's local timezone (same as Upcoming Meetings page)
+(function() {
+  function toCalendarDate(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  var today = toCalendarDate(new Date());
+  var tomorrow = toCalendarDate(new Date(Date.now() + 86400000));
+
+  document.querySelectorAll('.local-date-label').forEach(function(el) {
+    var iso = el.getAttribute('data-iso');
+    if (!iso) return;
+    var d = new Date(iso);
+    var key = toCalendarDate(d);
+    if (key === today) el.textContent = 'Today';
+    else if (key === tomorrow) el.textContent = 'Tomorrow';
+    else el.textContent = d.toLocaleDateString(undefined, { weekday: 'short' });
+    if (key === today) el.classList.add('font-semibold', 'text-indigo-600');
+    else if (key === tomorrow) el.classList.add('font-semibold', 'text-amber-600');
+  });
+  document.querySelectorAll('.local-date-day').forEach(function(el) {
+    var iso = el.getAttribute('data-iso');
+    if (!iso) return;
+    el.textContent = new Date(iso).getDate();
+  });
+  document.querySelectorAll('.local-date-month').forEach(function(el) {
+    var iso = el.getAttribute('data-iso');
+    if (!iso) return;
+    el.textContent = new Date(iso).toLocaleDateString(undefined, { month: 'short' });
+  });
+  document.querySelectorAll('.local-time-range').forEach(function(el) {
+    var startIso = el.getAttribute('data-start-iso');
+    var endIso = el.getAttribute('data-end-iso');
+    if (!startIso || !endIso) return;
+    var opts = { hour: 'numeric', minute: '2-digit' };
+    el.textContent = new Date(startIso).toLocaleTimeString(undefined, opts) + ' - ' + new Date(endIso).toLocaleTimeString(undefined, opts);
+  });
+})();
 </script>
 
 <%- include('partials/footer') -%>

@@ -34,6 +34,18 @@
                 <% } %>
               </span>
             <% } %>
+            <% if (hasCalendars) { %>
+            <button 
+              onclick="openImportMeetingModal()" 
+              class="inline-flex items-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition-colors"
+              title="Import a meeting you weren't invited to"
+            >
+              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+              </svg>
+              Import Meeting
+            </button>
+            <% } %>
             <button 
               onclick="window.location.reload()" 
               class="inline-flex items-center rounded-lg bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-colors"
@@ -1411,6 +1423,104 @@ document.addEventListener('keydown', function(e) {
     </div>
   </div>
 </div>
+
+<!-- Import Meeting Modal -->
+<div id="import-meeting-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-modal="true">
+  <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="closeModal('import-meeting-modal')"></div>
+    <div class="relative bg-white rounded-2xl shadow-xl transform transition-all sm:max-w-lg sm:w-full">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gray-900">Import Meeting</h3>
+        <button onclick="closeModal('import-meeting-modal')" class="text-gray-400 hover:text-gray-500">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="px-6 py-4">
+        <p class="text-sm text-gray-500 mb-4">Import a meeting you weren't invited to by pasting a Teams link or recording URL.</p>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Teams meeting link</label>
+            <input type="url" id="import-meeting-url" placeholder="https://teams.microsoft.com/l/meetup-join/..." class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500" />
+          </div>
+          <div class="text-center text-sm text-gray-400">— or —</div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Recording URL</label>
+            <input type="url" id="import-recording-url" placeholder="https://... (Stream, SharePoint, or direct link)" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Title (optional)</label>
+            <input type="text" id="import-meeting-title" placeholder="Meeting title" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500" />
+          </div>
+        </div>
+        <div id="import-meeting-error" class="mt-3 hidden text-sm text-red-600"></div>
+        <div id="import-meeting-success" class="mt-3 hidden text-sm text-green-600"></div>
+        <div class="mt-4 flex justify-end gap-2">
+          <button onclick="closeModal('import-meeting-modal')" class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Cancel</button>
+          <button onclick="submitImportMeeting()" id="import-meeting-submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 transition-colors">
+            Import
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openImportMeetingModal() {
+  document.getElementById('import-meeting-modal').classList.remove('hidden');
+  document.getElementById('import-meeting-url').value = '';
+  document.getElementById('import-recording-url').value = '';
+  document.getElementById('import-meeting-title').value = '';
+  document.getElementById('import-meeting-error').classList.add('hidden');
+  document.getElementById('import-meeting-success').classList.add('hidden');
+  document.getElementById('import-meeting-submit').disabled = false;
+}
+async function submitImportMeeting() {
+  const meetingUrl = document.getElementById('import-meeting-url').value.trim();
+  const recordingUrl = document.getElementById('import-recording-url').value.trim();
+  const title = document.getElementById('import-meeting-title').value.trim() || null;
+  const errEl = document.getElementById('import-meeting-error');
+  const successEl = document.getElementById('import-meeting-success');
+  const btn = document.getElementById('import-meeting-submit');
+  errEl.classList.add('hidden');
+  successEl.classList.add('hidden');
+  if (!meetingUrl && !recordingUrl) {
+    errEl.textContent = 'Enter a Teams meeting link or recording URL.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (meetingUrl && recordingUrl) {
+    errEl.textContent = 'Enter only one: Teams link or recording URL.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/ingest-external-meeting', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ meetingUrl: meetingUrl || undefined, recordingUrl: recordingUrl || undefined, title }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      errEl.textContent = data.error || data.message || 'Import failed.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      return;
+    }
+    successEl.textContent = data.message || 'Import queued. Refresh in a few moments to see the meeting.';
+    successEl.classList.remove('hidden');
+    setTimeout(() => {
+      closeModal('import-meeting-modal');
+      window.location.reload();
+    }, 2000);
+  } catch (e) {
+    errEl.textContent = e.message || 'Import failed.';
+    errEl.classList.remove('hidden');
+    btn.disabled = false;
+  }
+}
+</script>
 
 <% if (syncInProgress) { %>
 <script>
