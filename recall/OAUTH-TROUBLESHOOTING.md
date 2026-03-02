@@ -7,6 +7,14 @@
 - **Scopes:** This app uses short-form scopes (e.g. `Calendars.Read`). Ensure Azure API permissions match (e.g. Calendars.Read delegated).
 - See **MICROSOFT-OAUTH-SETUP.md** section “Still doesn’t work (same tenant or separate tenant)” for full steps.
 
+## AADSTS900561: The endpoint only accepts POST requests. Received a GET request.
+
+The OAuth **token** endpoint only accepts POST. This error usually means the **token URL** was added as a **Redirect URI** in Azure, so after sign-in the browser is sent (GET) to the token endpoint.
+
+**Fix:** Azure Portal → App registrations → your app → **Authentication** → **Redirect URIs**. Remove any URI like `https://login.microsoftonline.com/.../oauth2/v2.0/token`. Keep only your app callback URL (e.g. `https://meeting.tin.info/oauth-callback/microsoft-outlook`). Save.
+
+---
+
 ## Colleague sees "Need admin approval" after admin granted consent
 
 If an admin (e.g. you) has already clicked **Grant admin consent** in App registrations but another user in the same tenant still sees **"Need admin approval"** for TIN Meetings:

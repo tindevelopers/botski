@@ -141,9 +141,11 @@ export async function fetchTokensFromAuthorizationCodeForMicrosoftOutlook(
     code,
   };
   const url = new URL("https://login.microsoftonline.com/common/oauth2/v2.0/token");
+  const body = new URLSearchParams(params).toString();
   const response = await fetch(url.toString(), {
     method: "POST",
-    body: new URLSearchParams(params),
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
   });
   return await response.json();
 }

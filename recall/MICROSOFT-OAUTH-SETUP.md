@@ -226,6 +226,24 @@ If the flow redirects back with an error, the callback shows it in the notice (e
 
 ---
 
+## AADSTS900561: The endpoint only accepts POST requests. Received a GET request.
+
+This error means a **GET** request was sent to an endpoint that only accepts **POST**. The Microsoft OAuth **token** endpoint (`.../oauth2/v2.0/token`) only accepts POST; the **authorize** URL is the one that uses GET (browser redirect).
+
+**Most common cause:** The **token endpoint URL** is incorrectly listed as a **Redirect URI** in Azure. After sign-in, Microsoft redirects the **browser** (GET) to your redirect_uri with `?code=...`. If that redirect_uri is the token URL, the browser sends a GET to the token endpoint and you get AADSTS900561.
+
+**Fix:**
+
+1. **Azure Portal** → **App registrations** → **TIN Meetings** (or your app) → **Authentication**.
+2. Under **Platform configurations** → **Web** → **Redirect URIs**, check the list.
+3. **Remove** any URI that looks like `https://login.microsoftonline.com/.../oauth2/v2.0/token` (or any `login.microsoftonline.com/.../token` URL).
+4. Keep **only** your app callback URL(s), e.g. `https://meeting.tin.info/oauth-callback/microsoft-outlook`.
+5. **Save**.
+
+Redirect URIs must be **your app's callback URLs** (where the user lands after signing in). The token exchange is done by your **server** via POST from your backend, not by the browser.
+
+---
+
 ## invalid_grant (AADSTS9002313) or "request is missing" (AADSTS90014)
 
 These often occur when exchanging the authorization code for tokens.
