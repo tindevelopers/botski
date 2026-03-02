@@ -219,6 +219,23 @@ export default async (job) => {
       return;
     }
     
+    // Skip if event already has an active bot (prevents repeated joins from periodic sync/webhooks).
+    // isRetry bypasses this - user explicitly wants a new bot (e.g. meeting started late).
+    if (!isRetry) {
+      const bots = event.recallData?.bots || [];
+      const activeStatuses = ['in_call', 'joined_call', 'in_call_recording', 'in_call_not_recording', 'joining_call', 'in_waiting_room'];
+      const hasActiveBot = bots.some(b => {
+        const code = (b?.status?.code ?? b?.status ?? '').toString().toLowerCase();
+        const lastChange = b?.status_changes?.[b.status_changes?.length - 1];
+        const lastCode = (lastChange?.code ?? lastChange ?? '').toString().toLowerCase();
+        return activeStatuses.includes(code) || activeStatuses.includes(lastCode);
+      });
+      if (hasActiveBot) {
+        console.log(`[BOT-SCHEDULE] Skipping - event ${event.id} already has active bot (prevents repeated joins)`);
+        return;
+      }
+    }
+
     // #region agent log
     fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'72392a'},body:JSON.stringify({sessionId:'72392a',location:'worker/processors/calendar-event-update-bot-schedule.js:before_api_call',message:'Before calling Recall API to schedule bot',data:{eventId:event.id,recallEventId:event.recallId,deduplicationKey:deduplicationKey,botConfigKeys:Object.keys(botConfig),hasJoinAt:!!botConfig.join_at},timestamp:Date.now(),runId:'bot-schedule',hypothesisId:'A'})}).catch(()=>{});
     // #endregion
