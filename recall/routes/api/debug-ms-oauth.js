@@ -1,20 +1,24 @@
 import {
   getMicrosoftSignInScopes,
   getMicrosoftAdminConsentUrl,
+  getMicrosoftRedirectUri,
 } from "../../logic/oauth.js";
 
 /**
  * GET /api/debug/ms-oauth?tenant=optional-tenant-id
- * Returns the Microsoft OAuth scopes used for sign-in and the admin consent URL.
- * Use this to verify the deployed app is using minimal scopes (no OnlineMeetings.Read in signInScopes).
+ * Returns the Microsoft OAuth scopes, redirect_uri, and admin consent URL.
+ * Use to verify redirect_uri matches Azure (must be your callback URL, never the token endpoint).
  */
 export default async (req, res) => {
   const tenant = req.query.tenant || "common";
   const signInScopes = getMicrosoftSignInScopes();
   const adminConsentUrl = getMicrosoftAdminConsentUrl(tenant);
+  const redirect_uri = getMicrosoftRedirectUri();
   res.json({
     signInScopes,
+    redirect_uri,
+    PUBLIC_URL: process.env.PUBLIC_URL || "(not set)",
     adminConsentUrl,
-    note: "If signInScopes includes OnlineMeetings.Read or *.Read.All, the deployment may not have the latest code. Admin consent URL: have an org admin open it to grant consent for all users in their tenant.",
+    note: "redirect_uri must match Azure Web redirect URIs exactly. It must NOT be the token endpoint (login.microsoftonline.com/.../token). If you see AADSTS900561, remove the token URL from both Web and SPA redirect URIs in Azure.",
   });
 };

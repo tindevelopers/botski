@@ -237,10 +237,13 @@ This error means a **GET** request was sent to an endpoint that only accepts **P
 1. **Azure Portal** → **App registrations** → **TIN Meetings** (or your app) → **Authentication**.
 2. Under **Platform configurations** → **Web** → **Redirect URIs**, check the list.
 3. **Remove** any URI that looks like `https://login.microsoftonline.com/.../oauth2/v2.0/token` (or any `login.microsoftonline.com/.../token` URL).
-4. Keep **only** your app callback URL(s), e.g. `https://meeting.tin.info/oauth-callback/microsoft-outlook`.
-5. **Save**.
+4. Check **both** "Web" and **"Single-page application" (SPA)** platform types—remove the token URL from each list if present.
+5. Keep **only** your app callback URL(s), e.g. `https://meeting.tin.info/oauth-callback/microsoft-outlook`.
+6. **Save**.
 
 Redirect URIs must be **your app's callback URLs** (where the user lands after signing in). The token exchange is done by your **server** via POST from your backend, not by the browser.
+
+**Verify what your app sends:** Open `https://meeting.tin.info/api/debug/ms-oauth` (or your deployment URL + `/api/debug/ms-oauth`). The `redirect_uri` in the response must exactly match one of the Web redirect URIs in Azure. Ensure `PUBLIC_URL` in the response matches your real app URL (no trailing slash).
 
 ---
 

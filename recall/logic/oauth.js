@@ -99,6 +99,11 @@ export function getMicrosoftSignInScopes() {
   return buildMicrosoftOutlookOAuthScopes(false);
 }
 
+/** Return redirect_uri used for Microsoft OAuth (for debugging; must match Azure). */
+export function getMicrosoftRedirectUri() {
+  return getPublicUrlBase() + "/oauth-callback/microsoft-outlook";
+}
+
 /**
  * URL for an org admin to grant consent so all users in their tenant can use the app.
  * @param {string} [tenantId] - Azure AD tenant ID (e.g. eurastechnology.com's). Default "common" lets admin pick tenant.
