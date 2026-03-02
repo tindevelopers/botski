@@ -1,7 +1,13 @@
+/** Base URL for OAuth redirects (no trailing slash) so authorize and token exchange match. */
+function getPublicUrlBase() {
+  const base = (process.env.PUBLIC_URL || "").replace(/\/+$/, "");
+  return base || process.env.PUBLIC_URL;
+}
+
 export function buildGoogleCalendarOAuthUrl(state) {
   const params = {
     client_id: process.env.GOOGLE_CALENDAR_OAUTH_CLIENT_ID,
-    redirect_uri: process.env.PUBLIC_URL + "/oauth-callback/google-calendar",
+    redirect_uri: getPublicUrlBase() + "/oauth-callback/google-calendar",
     response_type: "code",
     scope: buildGoogleOAuthScopes().join(" "),
     access_type: "offline",
@@ -27,7 +33,7 @@ function getMicrosoftOutlookBaseScopes() {
   const base = [
     "offline_access",
     "User.Read",
-    "https://graph.microsoft.com/Calendars.Read",
+    "Calendars.Read",
     "openid",
     "email",
   ];
@@ -65,7 +71,7 @@ export function buildMicrosoftOutlookOAuthUrl(state, options = {}) {
   const scopeStr = scopes.join(" ");
   const params = {
     client_id: process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_ID,
-    redirect_uri: process.env.PUBLIC_URL + "/oauth-callback/microsoft-outlook",
+    redirect_uri: getPublicUrlBase() + "/oauth-callback/microsoft-outlook",
     response_type: "code",
     scope: scopeStr,
     prompt: "consent",
@@ -100,7 +106,7 @@ export function getMicrosoftSignInScopes() {
 export function getMicrosoftAdminConsentUrl(tenantId = "common") {
   const clientId = process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_ID;
   const redirectUri = encodeURIComponent(
-    process.env.PUBLIC_URL + "/oauth-callback/microsoft-outlook"
+    getPublicUrlBase() + "/oauth-callback/microsoft-outlook"
   );
   return `https://login.microsoftonline.com/${tenantId}/adminconsent?client_id=${clientId}&redirect_uri=${redirectUri}`;
 }
@@ -109,7 +115,7 @@ export async function fetchTokensFromAuthorizationCodeForGoogleCalendar(code) {
   const params = {
     client_id: process.env.GOOGLE_CALENDAR_OAUTH_CLIENT_ID,
     client_secret: process.env.GOOGLE_CALENDAR_OAUTH_CLIENT_SECRET,
-    redirect_uri: process.env.PUBLIC_URL + "/oauth-callback/google-calendar",
+    redirect_uri: getPublicUrlBase() + "/oauth-callback/google-calendar",
     grant_type: "authorization_code",
     code,
   };
@@ -130,7 +136,7 @@ export async function fetchTokensFromAuthorizationCodeForMicrosoftOutlook(
     client_id: process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_ID,
     client_secret: process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_SECRET,
     redirect_uri:
-      process.env.PUBLIC_URL + "/oauth-callback/microsoft-outlook",
+      getPublicUrlBase() + "/oauth-callback/microsoft-outlook",
     grant_type: "authorization_code",
     code,
   };

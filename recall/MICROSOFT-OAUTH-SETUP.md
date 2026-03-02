@@ -162,3 +162,82 @@ If **staging** is at `https://meeting-assistant-v1-staging.up.railway.app` and *
 - This appears when the app is single-tenant but you need users from other orgs or personal Microsoft accounts.
 - **Fix**: Go to Azure Portal → Your App → **Authentication** → **Supported account types** → **Edit** → choose **"Accounts in any organizational directory and personal Microsoft accounts"** → **Save**. Wait a few minutes, then try again.
 - If you only need **internal testers** in your org, keep single-tenant and ensure admin consent is granted; no change needed.
+
+---
+
+## Colleague still sees "Need admin approval" after you granted tenant consent
+
+If you (the admin) granted **Grant admin consent for &lt;Your org&gt;** in **App registrations** but a colleague (e.g. non-admin) still sees **"Need admin approval"** for TIN Meetings:
+
+1. **Turn off user assignment (most common fix)**  
+   The Enterprise application can still require each user to be assigned. So even after API consent, only assigned users can use the app.
+
+   - Go to **Azure Portal** → **Microsoft Entra ID** (or **Azure Active Directory**) → **Enterprise applications**.
+   - Find **TIN Meetings** (search by name or by the app’s Client ID).
+   - Open it → **Properties**.
+   - Set **User assignment required?** to **No**.
+   - **Save**.
+
+   After this, any user in your tenant (including different domains in the same tenant, e.g. `@tin.info` and `@konnectglobal.net`) can sign in without being individually assigned.
+
+2. **Confirm admin consent**  
+   In **App registrations** → your app → **API permissions**, ensure **Grant admin consent for &lt;Your org&gt;** shows a green check for the permissions you use (e.g. User.Read, Calendars.Read, offline_access, openid, email).
+
+---
+
+## Still doesn’t work (same tenant or separate tenant)
+
+If sign-in or connect still fails for both a user in your tenant and a user in another org (separate tenant), check the following.
+
+### 1. App must be multi-tenant for other-tenant users
+
+The authorize URL uses `login.microsoftonline.com/common`, which supports multiple tenants only if the app is multi-tenant.
+
+- **Azure Portal** → **App registrations** → your app → **Authentication** → **Supported account types** → **Edit**.
+- For users from **other organizations**, set to **"Accounts in any organizational directory (Multitenant)"** or **"Accounts in any organizational directory and personal Microsoft accounts"**.
+- **Save** and wait a few minutes. Single-tenant apps only allow users from your own tenant.
+
+### 2. Other-tenant admin must grant consent in their tenant
+
+For a user in **Tenant B**, consent must be granted **in Tenant B**, not in your app’s tenant.
+
+- **Option A:** Tenant B’s admin opens the admin consent URL using **their** tenant ID:
+  `https://login.microsoftonline.com/<TENANT_B_ID>/adminconsent?client_id=<YOUR_CLIENT_ID>&redirect_uri=https%3A%2F%2Fmeeting.tin.info%2Foauth-callback%2Fmicrosoft-outlook`
+  (Replace `<TENANT_B_ID>` with Tenant B’s directory (tenant) ID; replace `<YOUR_CLIENT_ID>` with your app’s client ID.)
+- **Option B:** In **Tenant B’s** Azure Portal → **Microsoft Entra ID** → **Enterprise applications** → find your app (by name or client ID). Open it → **Permissions** → **Grant admin consent for &lt;Tenant B&gt;**. Then **Properties** → set **User assignment required?** to **No** → **Save**.
+
+Your app appears in Tenant B’s Enterprise applications after the first sign-in attempt or when an admin in Tenant B opens the admin consent URL.
+
+### 3. Use short-form scopes (this app)
+
+This app requests **short-form** Microsoft Graph scopes (e.g. `Calendars.Read`, not `https://graph.microsoft.com/Calendars.Read`) to avoid “scope is not valid” in some tenants. No change needed if you’re on the latest code.
+
+### 4. Same-tenant checklist
+
+For users in **your** tenant:
+
+- **App registrations** → your app → **API permissions** → **Grant admin consent for &lt;Your org&gt;** has a green check for User.Read, Calendars.Read, offline_access, openid, email.
+- **Enterprise applications** → your app → **Properties** → **User assignment required?** = **No** → **Save**.
+- Redirect URI in Azure exactly matches `PUBLIC_URL` + `/oauth-callback/microsoft-outlook` (e.g. `https://meeting.tin.info/oauth-callback/microsoft-outlook`), no trailing slash.
+
+### 5. See the exact error
+
+If the flow redirects back with an error, the callback shows it in the notice (e.g. “Microsoft sign-in failed: …”). Check server logs for token exchange errors (e.g. `invalid_grant`, `AADSTS65001`). Redirect URI mismatch and one-time use of the authorization code are the most common causes.
+
+---
+
+## invalid_grant (AADSTS9002313) or "request is missing" (AADSTS90014)
+
+These often occur when exchanging the authorization code for tokens.
+
+1. **Redirect URI must match exactly**  
+   The `redirect_uri` sent in the token request must be **identical** to:
+   - The redirect URI used in the sign-in link (built from `PUBLIC_URL`), and  
+   - The redirect URI registered in Azure (**Authentication** → **Web** → **Redirect URIs**).
+
+   - Ensure `PUBLIC_URL` has **no trailing slash** (e.g. `https://meeting.tin.info`, not `https://meeting.tin.info/`).
+   - In Azure, the redirect URI must be exactly:  
+     `https://meeting.tin.info/oauth-callback/microsoft-outlook` (or your app’s URL + `/oauth-callback/microsoft-outlook`).
+
+2. **Code use**  
+   The authorization `code` can only be used once and expires quickly. If the user refreshes the callback page or retries with the same code, you’ll get invalid_grant. Have the colleague try **Continue with Microsoft** again from a fresh sign-in.

@@ -1,5 +1,28 @@
 # OAuth Troubleshooting Guide
 
+## Still doesn’t work for same tenant or another tenant
+
+- **Other-tenant users:** The app must be **multi-tenant** (Azure → App registration → Authentication → Supported account types → “Accounts in any organizational directory” or “...and personal Microsoft accounts”). For a user in Tenant B, **Tenant B’s admin** must grant consent in **Tenant B** (admin consent URL with Tenant B’s tenant ID, or Tenant B’s Azure → Enterprise applications → your app → Grant admin consent; then set User assignment required = No).
+- **Same-tenant users:** In **your** tenant: App registration → API permissions → Grant admin consent; Enterprise applications → your app → Properties → User assignment required = **No**.
+- **Scopes:** This app uses short-form scopes (e.g. `Calendars.Read`). Ensure Azure API permissions match (e.g. Calendars.Read delegated).
+- See **MICROSOFT-OAUTH-SETUP.md** section “Still doesn’t work (same tenant or separate tenant)” for full steps.
+
+## Colleague sees "Need admin approval" after admin granted consent
+
+If an admin (e.g. you) has already clicked **Grant admin consent** in App registrations but another user in the same tenant still sees **"Need admin approval"** for TIN Meetings:
+
+**Cause:** The **Enterprise application** may have **User assignment required** set to **Yes**, so only explicitly assigned users can use the app.
+
+**Fix:**
+1. Azure Portal → **Microsoft Entra ID** (or **Azure Active Directory**) → **Enterprise applications**.
+2. Find **TIN Meetings** (by name or Client ID).
+3. Open it → **Properties**.
+4. Set **User assignment required?** to **No** → **Save**.
+
+After this, all users in the tenant (including different domains in the same org) can sign in without being assigned.
+
+---
+
 ## Error: invalid_grant (AADSTS9002313)
 
 This error typically means one of these issues:
