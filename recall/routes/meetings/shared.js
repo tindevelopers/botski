@@ -173,11 +173,13 @@ export default async (req, res) => {
     };
 
     // Render the meeting detail view (read-only for shared meetings)
+    const enableLocalTelemetry = process.env.NODE_ENV === "development" && process.env.ENABLE_LOCAL_TELEMETRY === "true";
     res.render("meeting-detail", {
       meeting,
       user: null, // No user context for public shares
       notice: null,
       isPublicShare: true,
+      enableLocalTelemetry,
     });
   } catch (error) {
     console.error("[MEETINGS] Error loading shared meeting:", error);

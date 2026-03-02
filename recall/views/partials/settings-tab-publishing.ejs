@@ -116,10 +116,11 @@
           <input name="baseUrl" type="url" required value="<%= teamworkTarget?.config?.baseUrl || '' %>" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
           <label class="block text-xs font-medium text-gray-700">API Key</label>
           <input name="apiKey" type="password" required value="<%= teamworkTarget?.config?.apiKey || '' %>" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-          <label class="block text-xs font-medium text-gray-700">Project ID (optional)</label>
+          <label class="block text-xs font-medium text-gray-700">Project ID (optional, for milestones)</label>
           <input name="projectId" type="text" value="<%= teamworkTarget?.config?.projectId || '' %>" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Project ID">
-          <label class="block text-xs font-medium text-gray-700">Tasklist ID (optional)</label>
-          <input name="tasklistId" type="text" value="<%= teamworkTarget?.config?.tasklistId || '' %>" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Tasklist ID">
+          <label class="block text-xs font-medium text-gray-700">Task List ID <span class="text-amber-600">(required)</span></label>
+          <input name="tasklistId" type="text" value="<%= teamworkTarget?.config?.tasklistId || '' %>" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="e.g. 123456" title="Tasks are created in this list. Find it in Teamwork: Project → Task List → ID in URL or list settings.">
+          <p class="text-xs text-gray-500">Find the Task List ID in Teamwork: open a task list, the ID is in the URL or in the list’s settings.</p>
           <label class="block text-xs font-medium text-gray-700">Milestone ID (optional)</label>
           <input name="milestoneId" type="text" value="<%= teamworkTarget?.config?.milestoneId || '' %>" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" placeholder="Milestone ID">
           <div class="flex items-center space-x-2">

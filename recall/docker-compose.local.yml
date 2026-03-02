@@ -1,9 +1,8 @@
-version: '3.1'
 services:
   calrecall-app:
-    build: 
+    build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.railway
     ports:
       - "3003:3003"
     command: npm run dev
@@ -11,30 +10,50 @@ services:
       - .:/app
       - /app/node_modules
     depends_on:
-      - calrecall-redis
+      calrecall-redis: { condition: service_started }
+      calrecall-db: { condition: service_healthy }
     environment:
       - REDIS_URL=redis://calrecall-redis:6379
+      - DATABASE_URL=postgresql://recall:recall@calrecall-db:5432/recall?sslmode=disable
       - NODE_ENV=development
     env_file:
       - .env
-  
+    restart: on-failure
+
   calrecall-worker:
-    build: 
+    build:
       context: .
-      dockerfile: Dockerfile    
-    command: npm run dev:worker
+      dockerfile: Dockerfile.railway
+    command: npm run start:worker
     volumes:
       - .:/app
       - /app/node_modules
     depends_on:
-      - calrecall-redis
+      calrecall-redis: { condition: service_started }
+      calrecall-db: { condition: service_healthy }
     environment:
       - REDIS_URL=redis://calrecall-redis:6379
+      - DATABASE_URL=postgresql://recall:recall@calrecall-db:5432/recall?sslmode=disable
       - NODE_ENV=development
     env_file:
       - .env
-    
+    restart: on-failure
+
   calrecall-redis:
-    image: redis:6.2    
+    image: redis:6.2
     ports:
       - "6379:6379"
+
+  calrecall-db:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: recall
+      POSTGRES_PASSWORD: recall
+      POSTGRES_DB: recall
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recall -d recall"]
+      interval: 5s
+      timeout: 5s
+      retries: 5

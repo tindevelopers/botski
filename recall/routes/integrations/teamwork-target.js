@@ -1,4 +1,5 @@
 import db from "../../db.js";
+import { Op } from "sequelize";
 import { generateNotice } from "../utils.js";
 import { v4 as uuidv4 } from "uuid";
 
@@ -18,22 +19,38 @@ export default async (req, res) => {
     }
 
     const userId = req.authentication.user.id;
-    const [target, created] = await db.PublishTarget.upsert(
-      {
+    const enabledValue = enabled === "on" || enabled === true;
+    const config = {
+      baseUrl,
+      apiKey,
+      projectId: projectId || null,
+      tasklistId: tasklistId || null,
+      milestoneId: milestoneId || null,
+    };
+
+    const existing = await db.PublishTarget.findOne({
+      where: { userId, type: "teamwork" },
+      order: [["updatedAt", "DESC"]],
+    });
+
+    let created;
+    if (existing) {
+      await existing.update({ enabled: enabledValue, config });
+      created = false;
+      // Remove any duplicate teamwork targets from the old upsert bug
+      await db.PublishTarget.destroy({
+        where: { userId, type: "teamwork", id: { [Op.ne]: existing.id } },
+      });
+    } else {
+      await db.PublishTarget.create({
         id: uuidv4(),
         userId,
         type: "teamwork",
-        enabled: enabled === "on" || enabled === true,
-        config: {
-          baseUrl,
-          apiKey,
-          projectId: projectId || null,
-          tasklistId: tasklistId || null,
-          milestoneId: milestoneId || null,
-        },
-      },
-      { returning: true }
-    );
+        enabled: enabledValue,
+        config,
+      });
+      created = true;
+    }
 
     res.cookie(
       "notice",

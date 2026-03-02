@@ -5,10 +5,8 @@ import { EventEmitter } from 'events';
 // This affects all EventEmitters in the application, including ioredis Commander
 EventEmitter.defaultMaxListeners = 20;
 
-const backgroundQueue = new Queue(
-  "background-queue",
-  process.env.REDIS_URL || "redis://127.0.0.1:6379"
-);
+const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
+const backgroundQueue = new Queue("background-queue", redisUrl);
 
 // Increase max listeners to prevent warnings when multiple processors register
 backgroundQueue.setMaxListeners(20);

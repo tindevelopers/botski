@@ -579,11 +579,13 @@ export default async (req, res) => {
     console.warn("[meetings/detail] PublishDelivery lookup failed:", err?.message || err);
   }
 
+  const enableLocalTelemetry = process.env.NODE_ENV === "development" && process.env.ENABLE_LOCAL_TELEMETRY === "true";
   return res.render("meeting-detail.ejs", {
     notice: req.notice,
     user: req.authentication.user,
     meeting,
     publishDeliveries,
+    enableLocalTelemetry,
   });
   } catch (err) {
     // #region agent log

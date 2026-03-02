@@ -6,6 +6,8 @@
 # Local database
 *.sqlite
 recall/db.sqlite
+railway_backup.sql
+**/railway_backup.sql
 
 # Dependencies
 node_modules/
