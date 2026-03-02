@@ -137,16 +137,17 @@ export async function fetchTokensFromAuthorizationCodeForGoogleCalendar(code) {
 export async function fetchTokensFromAuthorizationCodeForMicrosoftOutlook(
   code
 ) {
-  const params = {
-    client_id: process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_ID,
-    client_secret: process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_SECRET,
-    redirect_uri:
-      getPublicUrlBase() + "/oauth-callback/microsoft-outlook",
-    grant_type: "authorization_code",
-    code,
-  };
+  const redirectUri = getPublicUrlBase() + "/oauth-callback/microsoft-outlook";
+  const codeStr = typeof code === "string" ? code.trim() : "";
+  const params = new URLSearchParams();
+  params.set("grant_type", "authorization_code");
+  params.set("client_id", process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_ID || "");
+  params.set("client_secret", process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_SECRET || "");
+  params.set("code", codeStr);
+  params.set("redirect_uri", redirectUri);
+
   const url = new URL("https://login.microsoftonline.com/common/oauth2/v2.0/token");
-  const body = new URLSearchParams(params).toString();
+  const body = params.toString();
   const response = await fetch(url.toString(), {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },

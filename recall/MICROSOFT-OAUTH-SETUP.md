@@ -247,6 +247,16 @@ Redirect URIs must be **your app's callback URLs** (where the user lands after s
 
 ---
 
+## AADSTS9002313: Invalid request. Request is malformed or invalid.
+
+This can occur when exchanging the authorization code for tokens. Common causes:
+
+1. **Code already used or expired** – The authorization code is single-use and short-lived. If the user refreshed the callback page or clicked "Sign in with Microsoft" again before the first flow finished, the code may be invalid. Have them try again from a fresh sign-in (one click, wait for redirect).
+2. **Malformed token request** – The app now sends the token request with explicit parameter order and trims the code. Ensure `PUBLIC_URL` has no trailing slash so `redirect_uri` matches Azure exactly.
+3. **Redirect URI mismatch** – The `redirect_uri` in the token request must be identical to the one used in the authorize request and registered in Azure (e.g. `https://meeting.tin.info/oauth-callback/microsoft-outlook`).
+
+---
+
 ## invalid_grant (AADSTS9002313) or "request is missing" (AADSTS90014)
 
 These often occur when exchanging the authorization code for tokens.

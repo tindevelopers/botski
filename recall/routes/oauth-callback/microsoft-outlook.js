@@ -44,14 +44,24 @@ export default async (req, res) => {
     const { intent } = state;
     const userId = state.userId;
     let calendarId = state.calendarId;
+    const code = (req.query.code && String(req.query.code).trim()) || "";
     // #region agent log
     fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'oauth-callback/microsoft-outlook.js:state_parsed',message:'ms_oauth_state_parsed',data:{intent,intentIsSignin:intent==='signin',hasUserId:!!userId},timestamp:Date.now(),runId:'ms-oauth',hypothesisId:'H1'})}).catch(()=>{});
     // #endregion
 
     // Sign-in / sign-up with Microsoft (no existing user)
     if (intent === "signin") {
+      if (!code) {
+        res.cookie(
+          "notice",
+          JSON.stringify(
+            generateNotice("error", "Microsoft sign-in failed: No authorization code received. Try signing in again.")
+          )
+        );
+        return res.redirect("/sign-in");
+      }
       const oauthTokens =
-        await fetchTokensFromAuthorizationCodeForMicrosoftOutlook(req.query.code);
+        await fetchTokensFromAuthorizationCodeForMicrosoftOutlook(code);
       // #region agent log
       fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'oauth-callback/microsoft-outlook.js:signin_token_exchange',message:'ms_oauth_signin_tokens',data:{hasError:!!oauthTokens.error,errorDesc:oauthTokens.error_description||null},timestamp:Date.now(),runId:'ms-oauth',hypothesisId:'H2'})}).catch(()=>{});
       // #endregion
@@ -105,8 +115,12 @@ export default async (req, res) => {
 
     // Teams recording & transcript: upgrade existing calendar with recording scopes (admin consent may be required)
     if (intent === "recording" && userId && calendarId) {
+      if (!code) {
+        res.cookie("notice", JSON.stringify(generateNotice("error", "No authorization code received. Try again from Settings.")));
+        return res.redirect("/settings");
+      }
       const oauthTokens =
-        await fetchTokensFromAuthorizationCodeForMicrosoftOutlook(req.query.code);
+        await fetchTokensFromAuthorizationCodeForMicrosoftOutlook(code);
       if (oauthTokens.error) {
         res.cookie(
           "notice",
@@ -190,12 +204,19 @@ export default async (req, res) => {
       );
       return res.redirect("/");
     }
+    if (!code) {
+      res.cookie(
+        "notice",
+        JSON.stringify(generateNotice("error", "No authorization code received. Try connecting again from Settings."))
+      );
+      return res.redirect("/settings");
+    }
     console.log(
-      `Received microsoft oauth callback for user ${userId} with code ${req.query.code}`
+      `Received microsoft oauth callback for user ${userId} with code ${code.slice(0, 8)}...`
     );
 
     const oauthTokens =
-      await fetchTokensFromAuthorizationCodeForMicrosoftOutlook(req.query.code);
+      await fetchTokensFromAuthorizationCodeForMicrosoftOutlook(code);
 
     if (oauthTokens.error) {
       // #region agent log
