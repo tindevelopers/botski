@@ -6,7 +6,7 @@ import { checkForSharedBot, getSharedDeduplicationKey, findExistingBotForMeeting
 
 // add or remove bot for a calendar event based on its record status
 export default async (job) => {
-  const { recallEventId } = job.data;
+  const { recallEventId, isRetry = false } = job.data;
   const jobId = job.id || job.opts?.jobId || 'unknown';
   console.log(`[BOT-SCHEDULE] 🚀 Processing bot scheduling job: eventId=${recallEventId} jobId=${jobId}`);
   
@@ -108,7 +108,10 @@ export default async (job) => {
     // Check for shared bot from same company
     const userEmail = calendar?.User?.email;
     
-    let deduplicationKey = `recall-event-${event.recallId}`;
+    // For retry (e.g. meeting started late), use unique key so Recall creates a new bot
+    let deduplicationKey = isRetry
+      ? `recall-event-${event.recallId}-retry-${Date.now()}`
+      : `recall-event-${event.recallId}`;
     let sharedBotInfo = null;
     
     if (event.meetingUrl && userEmail) {
@@ -139,9 +142,10 @@ export default async (job) => {
       fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/processors/calendar-event-update-bot-schedule.js:shared_bot_check',message:'Shared bot check result',data:{recallEventId:event.recallId,eventId:event.id,hasSharedBot:sharedBotInfo?.hasSharedBot,sharedBotId:sharedBotInfo?.sharedBotId,sharedEventId:sharedBotInfo?.sharedEventId,organizerEmail:organizerEmail||null,isOrganizer,sharedUserEmail:sharedBotInfo?.sharedUserEmail},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
       // #endregion
 
-      if (sharedBotInfo.hasSharedBot && sharedBotInfo.sharedBotId) {
+      if (!isRetry && sharedBotInfo.hasSharedBot && sharedBotInfo.sharedBotId) {
         // A bot is already scheduled for this meeting (same company). Attach it to this event
         // so this user sees "Bot scheduled" and gets the recording, then skip creating another.
+        // Skip this when isRetry - user explicitly wants a new bot (e.g. meeting started late).
         const existing = await findExistingBotForMeeting(
           event.meetingUrl,
           userEmail,
@@ -175,9 +179,8 @@ export default async (job) => {
         return;
       }
 
-      // Use shared deduplication key for company coordination
-      // This ensures only one bot is scheduled even if multiple users try simultaneously
-      const sharedKey = getSharedDeduplicationKey(event.meetingUrl, userEmail);
+      // Use shared deduplication key for company coordination (skip for retry - we want a new bot)
+      const sharedKey = !isRetry && getSharedDeduplicationKey(event.meetingUrl, userEmail);
       if (sharedKey) {
         deduplicationKey = sharedKey;
         console.log(`[SHARED-BOT] Using shared deduplication key: ${deduplicationKey}`);

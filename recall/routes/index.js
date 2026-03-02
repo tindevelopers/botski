@@ -15,6 +15,7 @@ import calendarUpdate from "./calendar/update.js";
 import calendarUpdateBotSettings from "./calendar/update-bot-settings.js";
 import calendarRefresh from "./calendar/refresh.js";
 import calendarEventSetManualRecord from "./calendar-event/set-manual-record.js";
+import calendarEventSendBotAgain from "./calendar-event/send-bot-again.js";
 import oauthCallbackGoogleCalendar from "./oauth-callback/google-calendar.js";
 import oauthCallbackMicrosoftOutlook from "./oauth-callback/microsoft-outlook.js";
 import microsoftOutlookRecording from "./oauth/microsoft-outlook-recording.js";
@@ -128,6 +129,7 @@ router.post("/calendar/:id/disconnect", calendarDisconnect);
 router.post("/calendar/:id/refresh", calendarRefresh);
 
 router.patch("/calendar-event/:id/set-manual-record", calendarEventSetManualRecord);
+router.post("/calendar-event/:id/send-bot-again", calendarEventSendBotAgain);
 
 router.get("/oauth-callback/google-calendar", oauthCallbackGoogleCalendar);
 router.get("/oauth-callback/microsoft-outlook", oauthCallbackMicrosoftOutlook);

@@ -8,10 +8,11 @@ import { backgroundQueue } from "../queue.js";
  * @param {string} calendarId - The calendar ID (optional, for logging)
  * @param {Object} options - Additional options
  * @param {boolean} options.forceReschedule - If true, removes any existing job and creates a new one (for settings changes)
+ * @param {boolean} options.isRetry - If true, processor uses a unique deduplication key so Recall creates a new bot (e.g. meeting started late)
  * @returns {Promise} The queued job
  */
 export async function queueBotScheduleJob(recallEventId, calendarId = null, options = {}) {
-  const { forceReschedule = false } = options;
+  const { forceReschedule = false, isRetry = false } = options;
   
   // Use jobId to prevent duplicate bot scheduling jobs for the same event
   const jobId = `bot-schedule-${recallEventId}`;
@@ -55,6 +56,7 @@ export async function queueBotScheduleJob(recallEventId, calendarId = null, opti
       {
         calendarId,
         recallEventId,
+        isRetry,
       },
       {
         jobId, // This prevents duplicate jobs - if a job with this ID exists, it won't be added again
