@@ -121,6 +121,8 @@ class SlackPublisher extends BasePublisher {
       blocks,
     });
 
+    console.log(`[PUBLISHING] Slack postMessage succeeded: channel=${channelId} ts=${resp?.ts || "n/a"}`);
+
     return {
       externalId: resp?.ts || null,
       url: resp?.channel ? `https://app.slack.com/client/${resp.channel}/${resp.ts}` : null,
