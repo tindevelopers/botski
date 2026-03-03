@@ -29,7 +29,7 @@ export default async (req, res) => {
     fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da5c0c'},body:JSON.stringify(_log3)}).catch(()=>{});
     console.log('[DEBUG da5c0c]', JSON.stringify(_log3));
     // #endregion
-    const data = await listConversations({ token: integration.accessToken });
+    const data = await listConversations(integration.accessToken);
     const channels =
       data.channels?.map((c) => ({
         id: c.id,
