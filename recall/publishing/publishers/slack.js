@@ -8,9 +8,9 @@ class SlackPublisher extends BasePublisher {
   }
 
   validateConfig(config) {
-    if (!config?.webhookUrl) {
-      throw new Error("Slack webhookUrl is required");
-    }
+    // OAuth path: channelId + integration token; legacy path: webhookUrl
+    if (config?.webhookUrl || config?.channelId) return;
+    throw new Error("Slack webhookUrl or channelId is required");
   }
 
   async transformData(meetingSummary) {
