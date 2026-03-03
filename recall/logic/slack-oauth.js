@@ -4,7 +4,7 @@ const SLACK_CLIENT_ID = process.env.SLACK_CLIENT_ID;
 const SLACK_CLIENT_SECRET = process.env.SLACK_CLIENT_SECRET;
 const SLACK_REDIRECT_URI =
   process.env.SLACK_REDIRECT_URI ||
-  `${process.env.APP_BASE_URL || "http://localhost:3003"}/oauth-callback/slack`;
+  `${(process.env.PUBLIC_URL || "").replace(/\/+$/, "") || `http://localhost:${process.env.PORT || 3003}`}/oauth-callback/slack`;
 
 // Scopes: channel read/create, invite, user list, post messages
 const SLACK_SCOPES = [
