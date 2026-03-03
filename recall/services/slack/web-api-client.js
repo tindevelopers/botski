@@ -28,6 +28,11 @@ async function slackRequest({ token, path, method = "GET", body, query }) {
 
   const json = await res.json();
   if (!json.ok) {
+    // #region agent log
+    const _logSlack = { sessionId: 'da5c0c', location: 'web-api-client.js:slackRequest', message: 'Slack API not ok', data: { path, slackError: json.error, ok: json.ok, tokenType: typeof token }, timestamp: Date.now(), hypothesisId: 'H1,H4' };
+    fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da5c0c'},body:JSON.stringify(_logSlack)}).catch(()=>{});
+    console.log('[DEBUG da5c0c]', JSON.stringify(_logSlack));
+    // #endregion
     const err = new Error(
       `Slack API error for ${path}: ${json.error || "unknown_error"}`
     );
