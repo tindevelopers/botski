@@ -5,7 +5,15 @@ import { generateNotice } from "../utils.js";
 export default async (req, res) => {
   try {
     const { state, code } = req.query;
-    const parsedState = state ? JSON.parse(state) : {};
+    let stateStr = state;
+    if (typeof stateStr === "string" && /%[0-9A-Fa-f]{2}/.test(stateStr)) {
+      try {
+        stateStr = decodeURIComponent(stateStr);
+      } catch (_) {
+        // leave as-is if decode fails
+      }
+    }
+    const parsedState = stateStr ? JSON.parse(stateStr) : {};
     const userId = parsedState.userId;
 
     if (!userId) {
