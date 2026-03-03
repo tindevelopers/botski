@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import db from "../../db.js";
 import { exchangeSlackCodeForToken } from "../../logic/slack-oauth.js";
 import { generateNotice } from "../utils.js";
@@ -32,8 +33,11 @@ export default async (req, res) => {
       throw new Error("Slack OAuth did not return an access token");
     }
 
-    await db.Integration.upsert({
-      id: authedTeam.id || botUserId || userId,
+    // Integration.id is UUID; Slack returns team id like T4PCHD9UP. Find by userId+provider or create with new UUID.
+    const existing = await db.Integration.findOne({
+      where: { userId, provider: "slack" },
+    });
+    const payload = {
       userId,
       provider: "slack",
       accessToken,
@@ -44,7 +48,15 @@ export default async (req, res) => {
         botUserId,
         scope: tokenResponse?.scope,
       },
-    });
+    };
+    if (existing) {
+      await existing.update(payload);
+    } else {
+      await db.Integration.create({
+        id: crypto.randomUUID(),
+        ...payload,
+      });
+    }
 
     res.cookie(
       "notice",
