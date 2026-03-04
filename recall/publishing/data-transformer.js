@@ -90,6 +90,27 @@ export async function normalizeMeetingData(meetingSummary, options = {}) {
     }));
   }
 
+  // #region agent log
+  const sentiment = meetingSummary.sentiment;
+  const debugPayload = {
+    typeOfSentiment: typeof sentiment,
+    isNull: sentiment === null,
+    hypothesisId: "H1",
+  };
+  console.log("[DEBUG da5c0c] data-transformer sentiment", JSON.stringify(debugPayload));
+  fetch("http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "da5c0c" },
+    body: JSON.stringify({
+      sessionId: "da5c0c",
+      location: "data-transformer.js:before-sentiment",
+      message: "sentiment before building normalized payload",
+      data: debugPayload,
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+
   return {
     // Core content
     title:
