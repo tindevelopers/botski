@@ -129,16 +129,16 @@ export async function normalizeMeetingData(meetingSummary, options = {}) {
     // 3. Follow ups
     followUps: meetingSummary.followUps || [],
 
-    // 4. Sentiment
+    // 4. Sentiment (guard: typeof null === "object" in JS, so check != null before .label/.score)
     sentiment: meetingSummary.sentiment || null,
     sentimentLabel:
-      typeof meetingSummary.sentiment === "object"
+      meetingSummary.sentiment != null && typeof meetingSummary.sentiment === "object"
         ? meetingSummary.sentiment.label ||
           meetingSummary.sentiment.sentiment ||
           null
         : meetingSummary.sentiment || null,
     sentimentScore:
-      typeof meetingSummary.sentiment === "object"
+      meetingSummary.sentiment != null && typeof meetingSummary.sentiment === "object"
         ? meetingSummary.sentiment.score
         : null,
 
