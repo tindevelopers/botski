@@ -65,9 +65,19 @@ function buildMicrosoftOutlookOAuthScopes(includeRecordingScopes = false) {
  * @param {Object} state - { intent?, userId?, calendarId? }
  * @param {Object} [options] - { includeRecordingScopes: false } set true to request Teams recording/transcript (admin consent may be required)
  */
+const ADMIN_CONSENT_SCOPE_IDS = [
+  "OnlineMeetings.Read",
+  "OnlineMeetingTranscript.Read.All",
+  "OnlineMeetingRecording.Read.All",
+];
+
 export function buildMicrosoftOutlookOAuthUrl(state, options = {}) {
   const includeRecordingScopes = options.includeRecordingScopes === true;
   const scopes = buildMicrosoftOutlookOAuthScopes(includeRecordingScopes);
+  const hasAdminConsentScopes = scopes.some((s) => ADMIN_CONSENT_SCOPE_IDS.includes(s));
+  // #region agent log
+  fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da5c0c'},body:JSON.stringify({sessionId:'da5c0c',location:'logic/oauth.js:buildMicrosoftOutlookOAuthUrl',message:'ms_oauth_url_built',data:{intent:state?.intent,includeRecordingScopes,scopes,hasAdminConsentScopes,scopeCount:scopes.length},timestamp:Date.now(),runId:'ms-scopes',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
   const scopeStr = scopes.join(" ");
   const params = {
     client_id: process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_ID,
@@ -153,7 +163,11 @@ export async function fetchTokensFromAuthorizationCodeForMicrosoftOutlook(
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
   });
-  return await response.json();
+  const json = await response.json();
+  // #region agent log
+  fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da5c0c'},body:JSON.stringify({sessionId:'da5c0c',location:'logic/oauth.js:fetchTokensFromAuthorizationCodeForMicrosoftOutlook',message:'ms_token_exchange_result',data:{status:response.status,hasError:!!json.error,error:json.error,errorDescription:(json.error_description||'').slice(0,200)},timestamp:Date.now(),runId:'ms-oauth',hypothesisId:'H2'})}).catch(()=>{});
+  // #endregion
+  return json;
 }
 
 /**
@@ -189,7 +203,7 @@ export async function refreshMicrosoftOutlookToken(refreshToken) {
  */
 export async function fetchMicrosoftUserProfile(accessToken) {
   // #region agent log
-  fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'logic/oauth.js:fetchMicrosoftUserProfile',message:'graph_me_before',data:{tokenLength:accessToken?.length,hasToken:!!accessToken},timestamp:Date.now(),runId:'ms-graph-403',hypothesisId:'H2'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da5c0c'},body:JSON.stringify({sessionId:'da5c0c',location:'logic/oauth.js:fetchMicrosoftUserProfile',message:'graph_me_before',data:{tokenLength:accessToken?.length,hasToken:!!accessToken},timestamp:Date.now(),runId:'ms-graph-403',hypothesisId:'H2'})}).catch(()=>{});
   // #endregion
   const response = await fetch("https://graph.microsoft.com/v1.0/me", {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -197,7 +211,7 @@ export async function fetchMicrosoftUserProfile(accessToken) {
   if (!response.ok) {
     const text = await response.text();
     // #region agent log
-    fetch('http://127.0.0.1:7248/ingest/9df62f0f-78c1-44fb-821f-c3c7b9f764cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'logic/oauth.js:fetchMicrosoftUserProfile',message:'graph_me_error',data:{status:response.status,bodyPreview:(text||'').slice(0,300)},timestamp:Date.now(),runId:'ms-graph-403',hypothesisId:'H4'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7638/ingest/79656976-3d7d-40e3-8c2f-1fcd56f4a972',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da5c0c'},body:JSON.stringify({sessionId:'da5c0c',location:'logic/oauth.js:fetchMicrosoftUserProfile',message:'graph_me_error',data:{status:response.status,bodyPreview:(text||'').slice(0,300)},timestamp:Date.now(),runId:'ms-graph-403',hypothesisId:'H4'})}).catch(()=>{});
     // #endregion
     throw new Error(`Microsoft Graph /me failed: ${response.status} ${text}`);
   }
