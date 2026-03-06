@@ -465,12 +465,6 @@ export default async (req, res) => {
       },
     });
   } else {
-    res.cookie(
-      "notice",
-      JSON.stringify(
-        generateNotice("error", "You must be signed in to proceed.")
-      )
-    );
-    return res.redirect("/sign-in");
+    return res.render("landing.ejs");
   }
 };
