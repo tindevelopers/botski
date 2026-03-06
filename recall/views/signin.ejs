@@ -4,12 +4,9 @@
 <div class="min-h-[calc(100vh-72px)] grid grid-cols-1 lg:grid-cols-2">
   <!-- Left: Botski hero (desktop) -->
   <div class="hidden lg:flex flex-col justify-center bg-gradient-to-br from-[#6b089a] via-[#9247c7] to-[#5a0d88] text-white p-12 xl:p-16">
-    <div class="flex items-center gap-2.5 mb-12">
-      <div class="h-10 w-10 flex-shrink-0 rounded-lg bg-[#ffb300]"></div>
-      <div>
-        <div class="font-semibold text-lg">Botski AI</div>
-        <div class="text-xs font-medium text-white/80 uppercase tracking-wider">AI-Powered Meeting Intelligence</div>
-      </div>
+    <div class="mb-12">
+      <%- include('partials/botski-logo', { size: 'lg', wordLight: true }) -%>
+      <p class="mt-2 text-xs font-medium text-white/80 uppercase tracking-wider">AI-Powered Meeting Intelligence</p>
     </div>
     <h1 class="text-3xl xl:text-4xl font-bold leading-tight mb-4">Never miss a word</h1>
     <p class="text-white/90 text-lg mb-10 max-w-md">Botski records, transcribes, and summarizes your conversations in real-time.</p>
@@ -25,12 +22,9 @@
   <div class="flex flex-col justify-center bg-white p-8 sm:p-12 lg:p-16">
     <div class="w-full max-w-[420px] mx-auto">
       <!-- Logo (mobile + form header) -->
-      <div class="flex items-center gap-2.5 mb-10">
-        <div class="h-10 w-10 flex-shrink-0 rounded-lg bg-[#ffb300]"></div>
-        <div>
-          <div class="font-semibold text-lg text-[#09070c]">Botski AI</div>
-          <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">AI-Powered Meeting Intelligence</div>
-        </div>
+      <div class="mb-10">
+        <%- include('partials/botski-logo', { size: 'md', wordLight: false }) -%>
+        <p class="mt-2 text-xs font-medium text-gray-500 uppercase tracking-wider">AI-Powered Meeting Intelligence</p>
       </div>
 
       <h2 class="text-2xl font-bold text-[#09070c] mb-1">Welcome back</h2>
