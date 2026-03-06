@@ -1,12 +1,15 @@
-# Railway configuration for worker service
+# Use this when Railway service "Root Directory" is set to: recall
+# (Build context is then recall/, so we use Dockerfile.railway)
 
 [build]
 builder = "dockerfile"
-dockerfilePath = "Dockerfile.worker"
+dockerfilePath = "Dockerfile.railway"
 
 [deploy]
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
+healthcheckPath = "/health"
 
 [env]
 NODE_ENV = "production"
+PORT = "3003"
