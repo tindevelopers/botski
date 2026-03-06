@@ -1,5 +1,6 @@
 import { getAuthTokenForUser } from "../../logic/auth.js";
 import { generateNotice } from "../utils.js";
+import { buildMicrosoftOutlookOAuthUrl } from "../../logic/oauth.js";
 import db from "../../db.js";
 
 export default async (req, res) => {
@@ -20,8 +21,13 @@ export default async (req, res) => {
     res.redirect("/");
   } else {
     res.clearCookie("notice");
+    const microsoftSignInUrl =
+      process.env.MICROSOFT_OUTLOOK_OAUTH_CLIENT_ID
+        ? buildMicrosoftOutlookOAuthUrl({ intent: "signin" })
+        : null;
     return res.render("signin.ejs", {
       notice: generateNotice("error", "Invalid email or password"),
+      microsoftSignInUrl,
     });
   }
 };
